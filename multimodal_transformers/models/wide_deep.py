@@ -1,28 +1,21 @@
-"""
-During the development of the package I realised that there is a typing
-inconsistency. The input components of a Wide and Deep model are of type
-nn.Module. These change type internally to nn.Sequential. While nn.Sequential
-is an instance of nn.Module the oppossite is, of course, not true. This does
-not affect any funcionality of the package, but it is something that needs
-fixing. However, while fixing is simple (simply define new attributes that
-are the nn.Sequential objects), its implications are quite wide within the
-package (involves changing a number of tests and tutorials). Therefore, I
-will introduce that fix when I do a major release. For now, we live with it.
-"""
+"""During the development of the package I realised that there is a typing
+inconsistency.
 
+The input components of a Wide and Deep model are of type nn.Module. These change type internally to nn.Sequential. While nn.Sequential is an instance of
+nn.Module the oppossite is, of course, not true. This does not affect any funcionality of the package, but it is something that needs fixing. However, while
+fixing is simple (simply define new attributes that are the nn.Sequential objects), its implications are quite wide within the package (involves changing a
+number of tests and tutorials). Therefore, I will introduce that fix when I do a major release. For now, we live with it.
+"""
 import warnings
+from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
-
-from pytorch_widedeep.wdtypes import *  # noqa: F403
 from pytorch_widedeep.models.tab_mlp import MLP
 from pytorch_widedeep.models.tabnet.tab_net import TabNetPredLayer
+from torch import Tensor
 
-warnings.filterwarnings("default", category=UserWarning)
-
-use_cuda = torch.cuda.is_available()
-device = torch.device("cuda" if use_cuda else "cpu")
+warnings.filterwarnings('default', category=UserWarning)
 
 
 class WideDeep(nn.Module):
@@ -126,7 +119,7 @@ class WideDeep(nn.Module):
         deepimage: Optional[nn.Module] = None,
         deephead: Optional[nn.Module] = None,
         head_hidden_dims: Optional[List[int]] = None,
-        head_activation: str = "relu",
+        head_activation: str = 'relu',
         head_dropout: float = 0.1,
         head_batchnorm: bool = False,
         head_batchnorm_last: bool = False,
@@ -156,7 +149,7 @@ class WideDeep(nn.Module):
         self.deephead = deephead
 
         if self.deeptabular is not None:
-            self.is_tabnet = deeptabular.__class__.__name__ == "TabNet"
+            self.is_tabnet = deeptabular.__class__.__name__ == 'TabNet'
         else:
             self.is_tabnet = False
 
@@ -208,15 +201,15 @@ class WideDeep(nn.Module):
         )
 
         self.deephead.add_module(
-            "head_out", nn.Linear(head_hidden_dims[-1], self.pred_dim)
-        )
+            'head_out', nn.Linear(head_hidden_dims[-1], self.pred_dim))
 
     def _add_pred_layer(self):
         if self.deeptabular is not None:
             if self.is_tabnet:
                 self.deeptabular = nn.Sequential(
                     self.deeptabular,
-                    TabNetPredLayer(self.deeptabular.output_dim, self.pred_dim),
+                    TabNetPredLayer(self.deeptabular.output_dim,
+                                    self.pred_dim),
                 )
             else:
                 self.deeptabular = nn.Sequential(
@@ -225,38 +218,40 @@ class WideDeep(nn.Module):
                 )
         if self.deeptext is not None:
             self.deeptext = nn.Sequential(
-                self.deeptext, nn.Linear(self.deeptext.output_dim, self.pred_dim)
-            )
+                self.deeptext,
+                nn.Linear(self.deeptext.output_dim, self.pred_dim))
         if self.deepimage is not None:
             self.deepimage = nn.Sequential(
-                self.deepimage, nn.Linear(self.deepimage.output_dim, self.pred_dim)
-            )
+                self.deepimage,
+                nn.Linear(self.deepimage.output_dim, self.pred_dim))
 
     def _forward_wide(self, X):
         if self.wide is not None:
-            out = self.wide(X["wide"])
+            out = self.wide(X['wide'])
         else:
             batch_size = X[list(X.keys())[0]].size(0)
-            out = torch.zeros(batch_size, self.pred_dim).to(device)
+            out = torch.zeros(batch_size, self.pred_dim)
 
         return out
 
     def _forward_deephead(self, X, wide_out):
         if self.deeptabular is not None:
             if self.is_tabnet:
-                tab_out = self.deeptabular(X["deeptabular"])
+                tab_out = self.deeptabular(X['deeptabular'])
                 deepside, M_loss = tab_out[0], tab_out[1]
             else:
-                deepside = self.deeptabular(X["deeptabular"])
+                deepside = self.deeptabular(X['deeptabular'])
         else:
-            deepside = torch.FloatTensor().to(device)
+            deepside = torch.FloatTensor()
         if self.deeptext is not None:
-            deepside = torch.cat([deepside, self.deeptext(X["deeptext"])], axis=1)
+            deepside = torch.cat(
+                [deepside, self.deeptext(X['deeptext'])], axis=1)
         if self.deepimage is not None:
-            deepside = torch.cat([deepside, self.deepimage(X["deepimage"])], axis=1)
+            deepside = torch.cat(
+                [deepside, self.deepimage(X['deepimage'])], axis=1)
 
         deephead_out = self.deephead(deepside)
-        deepside_out = nn.Linear(deephead_out.size(1), self.pred_dim).to(device)
+        deepside_out = nn.Linear(deephead_out.size(1), self.pred_dim)
 
         if self.is_tabnet:
             res = (wide_out.add_(deepside_out(deephead_out)), M_loss)
@@ -268,14 +263,14 @@ class WideDeep(nn.Module):
     def _forward_deep(self, X, wide_out):
         if self.deeptabular is not None:
             if self.is_tabnet:
-                tab_out, M_loss = self.deeptabular(X["deeptabular"])
+                tab_out, M_loss = self.deeptabular(X['deeptabular'])
                 wide_out.add_(tab_out)
             else:
-                wide_out.add_(self.deeptabular(X["deeptabular"]))
+                wide_out.add_(self.deeptabular(X['deeptabular']))
         if self.deeptext is not None:
-            wide_out.add_(self.deeptext(X["deeptext"]))
+            wide_out.add_(self.deeptext(X['deeptext']))
         if self.deepimage is not None:
-            wide_out.add_(self.deepimage(X["deepimage"]))
+            wide_out.add_(self.deepimage(X['deepimage']))
 
         if self.is_tabnet:
             res = (wide_out, M_loss)
@@ -298,52 +293,43 @@ class WideDeep(nn.Module):
         if wide is not None:
             assert wide.wide_linear.weight.size(1) == pred_dim, (
                 "the 'pred_dim' of the wide component ({}) must be equal to the 'pred_dim' "
-                "of the deep component and the overall model itself ({})".format(
-                    wide.wide_linear.weight.size(1), pred_dim
-                )
-            )
-        if deeptabular is not None and not hasattr(deeptabular, "output_dim"):
+                'of the deep component and the overall model itself ({})'.
+                format(wide.wide_linear.weight.size(1), pred_dim))
+        if deeptabular is not None and not hasattr(deeptabular, 'output_dim'):
             raise AttributeError(
                 "deeptabular model must have an 'output_dim' attribute. "
-                "See pytorch-widedeep.models.deep_text.DeepText"
-            )
+                'See pytorch-widedeep.models.deep_text.DeepText')
         if deeptabular is not None:
-            is_tabnet = deeptabular.__class__.__name__ == "TabNet"
+            is_tabnet = deeptabular.__class__.__name__ == 'TabNet'
             has_wide_text_or_image = (
-                wide is not None or deeptext is not None or deepimage is not None
-            )
+                wide is not None or deeptext is not None
+                or deepimage is not None)
             if is_tabnet and has_wide_text_or_image:
                 warnings.warn(
                     "'WideDeep' is a model comprised by multiple components and the 'deeptabular'"
                     " component is 'TabNet'. We recommend using 'TabNet' in isolation."
                     " The reasons are: i)'TabNet' uses sparse regularization which partially losses"
-                    " its purpose when used in combination with other components."
+                    ' its purpose when used in combination with other components.'
                     " If you still want to use a multiple component model with 'TabNet',"
                     " consider setting 'lambda_sparse' to 0 during training. ii) The feature"
-                    " importances will be computed only for TabNet but the model will comprise multiple"
+                    ' importances will be computed only for TabNet but the model will comprise multiple'
                     " components. Therefore, such importances will partially lose their 'meaning'.",
                     UserWarning,
                 )
-        if deeptext is not None and not hasattr(deeptext, "output_dim"):
+        if deeptext is not None and not hasattr(deeptext, 'output_dim'):
             raise AttributeError(
                 "deeptext model must have an 'output_dim' attribute. "
-                "See pytorch-widedeep.models.deep_text.DeepText"
-            )
-        if deepimage is not None and not hasattr(deepimage, "output_dim"):
+                'See pytorch-widedeep.models.deep_text.DeepText')
+        if deepimage is not None and not hasattr(deepimage, 'output_dim'):
             raise AttributeError(
                 "deepimage model must have an 'output_dim' attribute. "
-                "See pytorch-widedeep.models.deep_text.DeepText"
-            )
+                'See pytorch-widedeep.models.deep_text.DeepText')
         if deephead is not None and head_hidden_dims is not None:
             raise ValueError(
                 "both 'deephead' and 'head_hidden_dims' are not None. Use one of the other, but not both"
             )
-        if (
-            head_hidden_dims is not None
-            and not deeptabular
-            and not deeptext
-            and not deepimage
-        ):
+        if (head_hidden_dims is not None and not deeptabular and not deeptext
+                and not deepimage):
             raise ValueError(
                 "if 'head_hidden_dims' is not None, at least one deep component must be used"
             )
@@ -358,7 +344,5 @@ class WideDeep(nn.Module):
                 output_dim += deepimage.output_dim
             assert deephead_inp_feat == output_dim, (
                 "if a custom 'deephead' is used its input features ({}) must be equal to "
-                "the output features of the deep component ({})".format(
-                    deephead_inp_feat, output_dim
-                )
-            )
+                'the output features of the deep component ({})'.format(
+                    deephead_inp_feat, output_dim))
