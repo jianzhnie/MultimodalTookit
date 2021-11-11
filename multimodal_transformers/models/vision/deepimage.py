@@ -7,67 +7,78 @@ Description:
 
 '''
 import torch.nn as nn
-from model_zoo import get_model
 from torch import Tensor
+from torchvision import models
 
-from ..tabular.tab_mlp import MLP
+
+class ImageCoAttentionEncoder(nn.Module):
+
+    def __init__(self, is_require_grad):
+        super(ImageCoAttentionEncoder, self).__init__()
+
+        self.is_require_grad = is_require_grad
+
+        # Resnet Encoder
+        self.resnet_encoder = self.build_encoder()
+
+        # Flatten the feature map grid [B, D, H, W] --> [B, D, H*W]
+        self.flatten = nn.Flatten(start_dim=2, end_dim=3)
+
+    def forward(self, x_img):
+        x_feat_map = self.resnet_encoder(x_img)
+
+        # Flatten (16 x 16 x 2048) --> (16*16, 2048)
+        x_feat = self.flatten(x_feat_map)
+
+        x_feat = x_feat.permute(0, 2, 1)  # [batch_size, spatial_locs, 2048]
+
+        return x_feat
+
+    def build_encoder(self):
+        """
+        Given Resnet backbone, build the encoder network from all layers except the last 2 layers.
+
+        :return: model (nn.Module)
+        """
+        resnet = models.resnet152(pretrained=True)
+
+        modules = list(resnet.children())[:-2]
+
+        resnet_encoder = nn.Sequential(*modules)
+
+        for param in resnet_encoder.parameters():
+            param.requires_grad = self.is_require_grad
+
+        return resnet_encoder
 
 
 class DeepImage(nn.Module):
-
-    def __init__(self, args):
-        super().__init__()
-        self.args = args
-
-        self.model_name = args.model_name
-        self.freeze_n = args.freeze_n
-        self.head_hidden_dims = args.head_hidden_dims
-        self.head_activation = args.head_activation
-        self.head_dropout = args.head_dropout
-        self.head_batchnorm = args.head_batchnorm
-        self.head_batchnorm_last = args.head_batchnorm_last
-        self.head_linear_first = args.head_linear_first
-
-        vision_model = get_model(self.model_name)
-        backbone_layers = list(vision_model.children())[:-1]
-        self.backbone = self._build_backbone(backbone_layers, self.freeze_n)
-
-        if self.head_hidden_dims is not None:
-            assert self.head_hidden_dims[0] == self.output_dim, (
-                'The output dimension from the backbone ({}) is not consistent with '
-                'the expected input dimension ({}) of the fc-head'.format(
-                    self.output_dim, self.head_hidden_dims[0]))
-            self.imagehead = MLP(
-                args.head_hidden_dims,
-                args.head_activation,
-                args.head_dropout,
-                args.head_batchnorm,
-                args.head_batchnorm_last,
-                args.head_linear_first,
-            )
-            self.output_dim = self.head_hidden_dims[-1]
+    def __init__(self, is_require_grad=True):
+        super(DeepImage, self).__init__()
+        self.is_require_grad = is_require_grad
+        # Resnet Encoder
+        self.resnet_encoder = self.build_encoder()
+        # Flatten the feature map grid [B, D, H, W] --> [B, D, H*W]
+        self.flatten = nn.Flatten(start_dim=2, end_dim=3)
 
     def forward(self, x: Tensor) -> Tensor:  # type: ignore
         r"""Forward pass connecting the `'backbone'` with the `'head layers'`"""
-        x = self.backbone(x)
-        x = x.view(x.size(0), -1)
-        if self.head_hidden_dims is not None:
-            out = self.imagehead(x)
-            return out
-        else:
-            return x
+        x_feat = self.resnet_encoder(x)
+        # Flatten (16 x 16 x 2048) --> (16*16, 2048)
+        x_feat = self.flatten(x_feat)
+        x_feat = x_feat.permute(0, 2, 1)  # [batch_size, spatial_locs, 2048]
+        return x_feat
 
-    def _build_backbone(self, backbone_layers, freeze_n):
+    def build_encoder(self):
         """Builds the backbone layers."""
-        if freeze_n > 8:
-            raise ValueError(
-                "freeze_n' must be less than or equal to 8 for resnet architectures"
-            )
-        frozen_layers = []
-        trainable_layers = backbone_layers[freeze_n:]
-        for layer in backbone_layers[:freeze_n]:
-            for param in layer.parameters():
-                param.requires_grad = False
-            frozen_layers.append(layer)
-        trainable_and_frozen_layers = frozen_layers + trainable_layers
-        return nn.Sequential(*trainable_and_frozen_layers)
+        resnet = models.resnet50(pretrained=True)
+        modules = list(resnet.children())[:-1]
+        resnet_encoder = nn.Sequential(*modules)
+        for param in resnet_encoder.parameters():
+            param.requires_grad = self.is_require_grad
+        return resnet_encoder
+
+
+if __name__ == '__main__':
+    model = DeepImage(is_require_grad=True)
+    print(model)
