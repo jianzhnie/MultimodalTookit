@@ -3,7 +3,7 @@ from collections import OrderedDict
 from transformers import AlbertConfig, AutoConfig, BertConfig, DistilBertConfig, RobertaConfig, XLMConfig, XLNetConfig
 from transformers.configuration_utils import PretrainedConfig
 
-from .deeptext import AlbertWithTabular, BertWithTabular, DistilBertWithTabular, RobertaWithTabular, XLMWithTabular, XLNetWithTabular
+from deeptext import AlbertWithTabular, BertWithTabular, DistilBertWithTabular, RobertaWithTabular, XLMWithTabular, XLNetWithTabular
 
 MODEL_FOR_SEQUENCE_W_TABULAR_CLASSIFICATION_MAPPING = OrderedDict([
     (RobertaConfig, RobertaWithTabular), (BertConfig, BertWithTabular),
@@ -65,7 +65,7 @@ class AutoModelWithText:
         falling back to using pattern matching on the `pretrained_model_name_or_path` string:
 
         The model is set in evaluation mode by default using `model.eval()` (Dropout modules are deactivated)
-        To train the model, you should first set it back in training mode with `model.train()`
+        To train the model, you should first set it back in tRobertaWithTabularaining mode with `model.train()`
 
         Args:
             pretrained_model_name_or_path: either:
@@ -124,15 +124,13 @@ class AutoModelWithText:
         if not isinstance(config, PretrainedConfig):
             config = AutoConfig.from_pretrained(pretrained_model_name_or_path,
                                                 **kwargs)
-
         for config_class, model_class in MODEL_FOR_SEQUENCE_W_TABULAR_CLASSIFICATION_MAPPING.items(
         ):
+
             if isinstance(config, config_class):
                 return model_class.from_pretrained(
                     pretrained_model_name_or_path,
-                    *model_args,
-                    config=config,
-                    **kwargs)
+                    config=config)
         raise ValueError(
             'Unrecognized configuration class {} for this kind of AutoModel: {}.\n'
             'Model type should be one of {}.'.format(
@@ -142,3 +140,8 @@ class AutoModelWithText:
                           MODEL_FOR_SEQUENCE_W_TABULAR_CLASSIFICATION_MAPPING.
                           keys()),
             ))
+
+
+if __name__ == '__main__':
+    model = AutoModelWithText.from_pretrained('bert-base-uncased')
+    print(model)

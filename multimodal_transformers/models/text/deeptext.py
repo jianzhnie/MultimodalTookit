@@ -1,7 +1,7 @@
 '''
 Author: jianzhnie
 Date: 2021-11-09 14:40:19
-LastEditTime: 2021-11-11 18:41:56
+LastEditTime: 2021-11-11 19:20:30
 LastEditors: jianzhnie
 Description:
 
@@ -27,8 +27,8 @@ class BertWithTabular(BertForSequenceClassification):
             :obj:`TabularConfig` instance specifying the configs for :obj:`TabularFeatCombiner`
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *model_args, **kwargs):
+        super().__init__(*model_args, **kwargs)
 
     def forward(self,
                 input_ids=None,
@@ -93,8 +93,8 @@ class RobertaWithTabular(RobertaForSequenceClassification):
             :obj:`TabularConfig` instance specifying the configs for :obj:`TabularFeatCombiner`
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *model_args, **kwargs):
+        super().__init__(*model_args, **kwargs)
 
     def forward(self,
                 input_ids=None,
@@ -162,8 +162,8 @@ class DistilBertWithTabular(DistilBertForSequenceClassification):
             :obj:`TabularConfig` instance specifying the configs for :obj:`TabularFeatCombiner`
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *model_args, **kwargs):
+        super().__init__(*model_args, **kwargs)
 
     def forward(self,
                 input_ids=None,
@@ -227,8 +227,8 @@ class AlbertWithTabular(AlbertForSequenceClassification):
             :obj:`TabularConfig` instance specifying the configs for :obj:`TabularFeatCombiner`
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *model_args, **kwargs):
+        super().__init__(*model_args, **kwargs)
 
     def forward(self,
                 input_ids=None,
@@ -282,8 +282,8 @@ class XLNetWithTabular(XLNetForSequenceClassification):
             :obj:`TabularConfig` instance specifying the configs for :obj:`TabularFeatCombiner`
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *model_args, **kwargs):
+        super().__init__(*model_args, **kwargs)
 
     def forward(self,
                 input_ids=None,
@@ -347,8 +347,8 @@ class XLMWithTabular(XLMForSequenceClassification):
             :obj:`TabularConfig` instance specifying the configs for :obj:`TabularFeatCombiner`
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *model_args, **kwargs):
+        super().__init__(*model_args, **kwargs)
 
     def forward(self,
                 input_ids=None,
