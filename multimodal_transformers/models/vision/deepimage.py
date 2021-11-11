@@ -1,20 +1,15 @@
 '''
 Author: jianzhnie
 Date: 2021-11-10 18:22:22
-LastEditTime: 2021-11-10 18:51:05
+LastEditTime: 2021-11-11 15:50:09
 LastEditors: jianzhnie
-Description: 
+Description:
 
 '''
-
-import torch
 import torch.nn as nn
-import torchvision
-import copy
-from model_zoo import get_model, get_model_list, get_model_input_size
-import torch.nn as nn
-from timm.models.layers.classifier import ClassifierHead
+from model_zoo import get_model
 from torch import Tensor
+
 from ..tabular.tab_mlp import MLP
 
 
@@ -33,22 +28,22 @@ class DeepImage(nn.Module):
         self.head_batchnorm_last = args.head_batchnorm_last
         self.head_linear_first = args.head_linear_first
 
-        vision_model = self.get_model(self.model_name)
+        vision_model = get_model(self.model_name)
         backbone_layers = list(vision_model.children())[:-1]
         self.backbone = self._build_backbone(backbone_layers, self.freeze_n)
 
         if self.head_hidden_dims is not None:
             assert self.head_hidden_dims[0] == self.output_dim, (
-                "The output dimension from the backbone ({}) is not consistent with "
-                "the expected input dimension ({}) of the fc-head".format(
+                'The output dimension from the backbone ({}) is not consistent with '
+                'the expected input dimension ({}) of the fc-head'.format(
                     self.output_dim, self.head_hidden_dims[0]))
             self.imagehead = MLP(
-                head_hidden_dims,
-                head_activation,
-                head_dropout,
-                head_batchnorm,
-                head_batchnorm_last,
-                head_linear_first,
+                args.head_hidden_dims,
+                args.head_activation,
+                args.head_dropout,
+                args.head_batchnorm,
+                args.head_batchnorm_last,
+                args.head_linear_first,
             )
             self.output_dim = self.head_hidden_dims[-1]
 
@@ -63,9 +58,7 @@ class DeepImage(nn.Module):
             return x
 
     def _build_backbone(self, backbone_layers, freeze_n):
-        """
-        Builds the backbone layers
-        """
+        """Builds the backbone layers."""
         if freeze_n > 8:
             raise ValueError(
                 "freeze_n' must be less than or equal to 8 for resnet architectures"

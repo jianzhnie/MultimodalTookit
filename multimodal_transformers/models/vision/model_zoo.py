@@ -3,7 +3,7 @@ Author: jianzhnie
 Date: 2021-11-10 18:34:33
 LastEditTime: 2021-11-10 18:43:27
 LastEditors: jianzhnie
-Description: 
+Description:
 
 '''
 import timm
@@ -455,5 +455,5 @@ if __name__ == '__main__':
     models = get_model_list()
     print(models)
     print(len(models))
-    net = get_model("efficientnet_b1", pretrained=False)
+    net = get_model('efficientnet_b1', pretrained=False)
     print(net)
