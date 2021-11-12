@@ -9,14 +9,13 @@ Description:
 
 from functools import partial
 import logging
-from os.path import join, exists
 from utils import agg_text_columns_func, get_matching_cols, convert_to_func
 import pandas as pd
+
 logger = logging.getLogger(__name__)
-from datasets import Dataset as HFDataset
 
 
-def transform(data_df,
+def text_token(data_df,
               text_cols,
               tokenizer,
               sep_text_token_str=' ',
@@ -51,11 +50,24 @@ if __name__ == '__main__':
     config = AutoConfig.from_pretrained("bert-base-uncased")
     tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
     df = pd.read_csv(
-        "/home/robin/jianzh/multimodal/Multimodal-Toolkit/datasets/Womens_Clothing_E-Commerce_Reviews/test.csv"
+        "/Users/jianzhengnie/work/Multimodal-Toolkit/datasets/Womens_Clothing_E-Commerce_Reviews/test.csv"
     )
     text_cols = ["Title", "Review Text"]
+    text_cols = ["Division Name", "Department Name", "Class Name"]
     print(df[text_cols])
-    text_encoder = transform(
+    
+    text_cols_func = convert_to_func(text_cols)
+    empty_text_values = ['nan', 'None']
+    replace_empty_text = None
+    agg_func = partial(agg_text_columns_func, empty_text_values,
+                       replace_empty_text)
+    print(agg_func)
+    texts_cols = get_matching_cols(df, text_cols_func)
+    print(text_cols)
+    logger.info(f'Text columns: {texts_cols}')
+    texts_list = df[texts_cols].agg(agg_func, axis=1).tolist()
+    print(texts_list)
+    text_encoder = text_token(
         df,
         text_cols=["Title", "Review Text"],
         tokenizer=tokenizer,
