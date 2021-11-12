@@ -1,7 +1,7 @@
 '''
 Author: jianzhnie
 Date: 2021-11-12 15:40:06
-LastEditTime: 2021-11-12 20:25:30
+LastEditTime: 2021-11-12 20:43:07
 LastEditors: jianzhnie
 Description:
 
@@ -70,7 +70,7 @@ class NumericalPreprocessor(BasePreprocessor):
     def __init__(self,
                  numerical_cols: List[str] = None,
                  numerical_transformer_method: str = None,
-                 handle_na: bool = False):
+                 handle_na: bool = True):
         super(NumericalPreprocessor, self).__init__()
 
         self.numerical_cols = numerical_cols
@@ -124,7 +124,12 @@ class NumericalPreprocessor(BasePreprocessor):
         return self.fit(df).transform(df)
 
     def _prepare_continuous(self, df: pd.DataFrame) -> pd.DataFrame:
-        return df.copy()[self.numerical_cols]
+        df = df.copy()[self.numerical_cols]
+        df[self.numerical_cols] = df[self.numerical_cols].astype(float)
+        if self.handle_na:
+            df[self.numerical_cols] = df[self.numerical_cols].fillna(
+                dict(df[self.numerical_cols].median()), inplace=False)
+        return df
 
 
 if __name__ == '__main__':
