@@ -1,9 +1,8 @@
 from collections import OrderedDict
 
+from deeptext import AlbertWithTabular, BertWithTabular, DistilBertWithTabular, RobertaWithTabular, XLMWithTabular, XLNetWithTabular
 from transformers import AlbertConfig, AutoConfig, BertConfig, DistilBertConfig, RobertaConfig, XLMConfig, XLNetConfig
 from transformers.configuration_utils import PretrainedConfig
-
-from deeptext import AlbertWithTabular, BertWithTabular, DistilBertWithTabular, RobertaWithTabular, XLMWithTabular, XLNetWithTabular
 
 MODEL_FOR_SEQUENCE_W_TABULAR_CLASSIFICATION_MAPPING = OrderedDict([
     (RobertaConfig, RobertaWithTabular), (BertConfig, BertWithTabular),
@@ -54,7 +53,8 @@ class AutoModelWithText:
             ))
 
     @classmethod
-    def from_pretrained(cls, pretrained_model_name_or_path, **kwargs):
+    def from_pretrained(cls, pretrained_model_name_or_path, *model_args,
+                        **kwargs):
         r""" Instantiates one of the sequence classification model classes of the library
         from a pre-trained model configuration.
         See multimodal_transformers.py for supported transformer models
@@ -128,7 +128,10 @@ class AutoModelWithText:
 
             if isinstance(config, config_class):
                 return model_class.from_pretrained(
-                    pretrained_model_name_or_path, config=config, **kwargs)
+                    pretrained_model_name_or_path,
+                    *model_args,
+                    config=config,
+                    **kwargs)
         raise ValueError(
             'Unrecognized configuration class {} for this kind of AutoModel: {}.\n'
             'Model type should be one of {}.'.format(

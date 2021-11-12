@@ -1,11 +1,12 @@
 '''
 Author: jianzhnie
 Date: 2021-11-10 18:22:22
-LastEditTime: 2021-11-11 15:50:09
+LastEditTime: 2021-11-12 14:48:29
 LastEditors: jianzhnie
 Description:
 
 '''
+import torch
 import torch.nn as nn
 from torch import Tensor
 from torchvision import models
@@ -35,8 +36,8 @@ class ImageCoAttentionEncoder(nn.Module):
         return x_feat
 
     def build_encoder(self):
-        """
-        Given Resnet backbone, build the encoder network from all layers except the last 2 layers.
+        """Given Resnet backbone, build the encoder network from all layers
+        except the last 2 layers.
 
         :return: model (nn.Module)
         """
@@ -53,6 +54,7 @@ class ImageCoAttentionEncoder(nn.Module):
 
 
 class DeepImage(nn.Module):
+
     def __init__(self, is_require_grad=True):
         super(DeepImage, self).__init__()
         self.is_require_grad = is_require_grad
@@ -77,6 +79,37 @@ class DeepImage(nn.Module):
         for param in resnet_encoder.parameters():
             param.requires_grad = self.is_require_grad
         return resnet_encoder
+
+
+POOLING_BREAKDOWN = {
+    1: (1, 1),
+    2: (2, 1),
+    3: (3, 1),
+    4: (2, 2),
+    5: (5, 1),
+    6: (3, 2),
+    7: (7, 1),
+    8: (4, 2),
+    9: (3, 3),
+}
+
+
+class ImageEncoder(nn.Module):
+
+    def __init__(self, args):
+        super().__init__()
+        model = models.resnet50(pretrained=True)
+        modules = list(model.children())[:-2]
+        self.model = nn.Sequential(*modules)
+        self.pool = nn.AdaptiveAvgPool2d(
+            POOLING_BREAKDOWN[args.num_image_embeds])
+
+    def forward(self, x):
+        # Bx3x224x224 -> Bx2048x7x7 -> Bx2048xN -> BxNx2048
+        out = self.pool(self.model(x))
+        out = torch.flatten(out, start_dim=2)
+        out = out.transpose(1, 2).contiguous()
+        return out  # BxNx2048
 
 
 if __name__ == '__main__':
