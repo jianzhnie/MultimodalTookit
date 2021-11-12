@@ -27,16 +27,14 @@ class TorchTabularTextDataset(TorchDataset):
 
     """
     def __init__(self,
-                 encodings,
+                 text_encodings,
                  categorical_feats,
                  numerical_feats,
                  labels=None,
-                 df=None,
                  label_list=None,
                  class_weights=None
                  ):
-        self.df = df
-        self.encodings = encodings
+        self.encodings = text_encodings
         self.cat_feats = categorical_feats
         self.numerical_feats = numerical_feats
         self.labels = labels
