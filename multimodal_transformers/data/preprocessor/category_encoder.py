@@ -6,7 +6,7 @@ from sklearn import preprocessing
 logger = logging.getLogger(__name__)
 
 
-class CategoricalFeatures:
+class CategoricalFeatureEncoder:
     """Class to help encode categorical features From https://github.com/abhish
     ekkrthakur/mlframework/blob/master/src/categorical.py."""
 

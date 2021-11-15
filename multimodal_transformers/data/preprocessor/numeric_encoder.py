@@ -1,7 +1,7 @@
 '''
 Author: jianzhnie
 Date: 2021-11-12 15:40:06
-LastEditTime: 2021-11-12 20:43:07
+LastEditTime: 2021-11-15 18:33:32
 LastEditors: jianzhnie
 Description:
 
@@ -18,7 +18,7 @@ from sklearn.preprocessing import PowerTransformer, QuantileTransformer, Standar
 logger = logging.getLogger(__name__)
 
 
-class NumericalPreprocessor(BasePreprocessor):
+class NumericalFeatureTransformer(BasePreprocessor):
     """
     CONTINUOUS_TRANSFORMS = {
         "quantile_uniform": {

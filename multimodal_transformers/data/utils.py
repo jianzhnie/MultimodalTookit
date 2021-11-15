@@ -1,7 +1,7 @@
 '''
 Author: jianzhnie
 Date: 2021-11-12 15:42:02
-LastEditTime: 2021-11-15 09:36:15
+LastEditTime: 2021-11-15 18:35:06
 LastEditors: jianzhnie
 Description:
 
@@ -9,7 +9,7 @@ Description:
 import logging
 import types
 
-from category_encoder import CategoricalFeatures
+from preprocessor.category_encoder import CategoricalFeatureEncoder
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ def load_cat_feats(df, cat_bool_func, encode_type=None):
     logger.info(f'{len(cat_cols)} categorical columns')
     if len(cat_cols) == 0:
         return None
-    cat_feat_processor = CategoricalFeatures(df, cat_cols, encode_type)
+    cat_feat_processor = CategoricalFeatureEncoder(df, cat_cols, encode_type)
     return cat_feat_processor.fit_transform()
 
 
