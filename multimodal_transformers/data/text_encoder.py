@@ -1,7 +1,7 @@
 '''
 Author: jianzhnie
 Date: 2021-11-12 20:28:07
-LastEditTime: 2021-11-12 21:34:20
+LastEditTime: 2021-11-15 10:13:15
 LastEditors: jianzhnie
 Description:
 
@@ -46,12 +46,12 @@ def text_token(data_df,
 
 
 if __name__ == '__main__':
-
+    import torch
     from transformers import AutoConfig, AutoTokenizer
     config = AutoConfig.from_pretrained('bert-base-uncased')
     tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
     df = pd.read_csv(
-        '/Users/jianzhengnie/work/Multimodal-Toolkit/datasets/Womens_Clothing_E-Commerce_Reviews/test.csv'
+        '/home/robin/jianzh/multimodal/Multimodal-Toolkit/datasets/Womens_Clothing_E-Commerce_Reviews/test.csv'
     )
     text_cols = ['Title', 'Review Text']
     text_cols = ['Division Name', 'Department Name', 'Class Name']
@@ -67,12 +67,12 @@ if __name__ == '__main__':
     print(text_cols)
     logger.info(f'Text columns: {texts_cols}')
     texts_list = df[texts_cols].agg(agg_func, axis=1).tolist()
-    print(texts_list)
-    text_encoder = text_token(
+    text_encoder, df = text_token(
         df,
         text_cols=['Title', 'Review Text'],
         tokenizer=tokenizer,
         sep_text_token_str=tokenizer.sep_token,
         max_token_length=16,
     )
-    print(text_encoder)
+    item = {key: torch.tensor(val[0]) for key, val in text_encoder.items()}
+    print(item)
