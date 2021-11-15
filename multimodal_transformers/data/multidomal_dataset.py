@@ -3,14 +3,15 @@ Author: jianzhnie
 Date: 2021-11-12 14:42:32
 LastEditTime: 2021-11-12 14:42:53
 LastEditors: jianzhnie
-Description: 
+Description:
 
 '''
+from typing import Any, Optional
+
 import numpy as np
 import torch
 from sklearn.utils import Bunch
 from torch.utils.data import Dataset
-from typing import Optional, Any
 
 
 class WideDeepDataset(Dataset):
@@ -69,22 +70,22 @@ class WideDeepDataset(Dataset):
             # be ingested by the conv layers
             xdi = self.X_img[idx]
             # if int must be uint8
-            if "int" in str(xdi.dtype) and "uint8" != str(xdi.dtype):
-                xdi = xdi.astype("uint8")
+            if 'int' in str(xdi.dtype) and 'uint8' != str(xdi.dtype):
+                xdi = xdi.astype('uint8')
             # if int float must be float32
-            if "float" in str(xdi.dtype) and "float32" != str(xdi.dtype):
-                xdi = xdi.astype("float32")
+            if 'float' in str(xdi.dtype) and 'float32' != str(xdi.dtype):
+                xdi = xdi.astype('float32')
             # if there are no transforms, or these do not include ToTensor(),
             # then we need to  replicate what Tensor() does -> transpose axis
             # and normalize if necessary
-            if not self.transforms or "ToTensor" not in self.transforms_names:
+            if not self.transforms or 'ToTensor' not in self.transforms_names:
                 if xdi.ndim == 2:
                     xdi = xdi[:, :, None]
                 xdi = xdi.transpose(2, 0, 1)
-                if "int" in str(xdi.dtype):
-                    xdi = (xdi / xdi.max()).astype("float32")
+                if 'int' in str(xdi.dtype):
+                    xdi = (xdi / xdi.max()).astype('float32')
             # if ToTensor() is included, simply apply transforms
-            if "ToTensor" in self.transforms_names:
+            if 'ToTensor' in self.transforms_names:
                 xdi = self.transforms(xdi)
             # else apply transforms on the result of calling torch.tensor on
             # xdi after all the previous manipulation

@@ -1,5 +1,4 @@
 import logging
-import types
 
 import numpy as np
 from sklearn import preprocessing
@@ -8,9 +7,8 @@ logger = logging.getLogger(__name__)
 
 
 class CategoricalFeatures:
-    """ Class to help encode categorical features
-    From https://github.com/abhishekkrthakur/mlframework/blob/master/src/categorical.py
-    """
+    """Class to help encode categorical features From https://github.com/abhish
+    ekkrthakur/mlframework/blob/master/src/categorical.py."""
 
     def __init__(self, df, categorical_cols, encoding_type, handle_na=False):
         """
@@ -35,7 +33,7 @@ class CategoricalFeatures:
             for c in self.cat_feats:
                 self.df.loc[:,
                             c] = self.df.loc[:,
-                                             c].astype(str).fillna("-9999999")
+                                             c].astype(str).fillna('-9999999')
         self.output_df = self.df.copy(deep=True)
 
     def _label_encoding(self):
@@ -75,52 +73,52 @@ class CategoricalFeatures:
         return ohe.transform(self.df[self.cat_feats].values)
 
     def fit_transform(self):
-        if self.enc_type == "label":
+        if self.enc_type == 'label':
             return self._label_encoding()
-        elif self.enc_type == "binary":
+        elif self.enc_type == 'binary':
             return self._label_binarization()
-        elif self.enc_type == "ohe":
+        elif self.enc_type == 'ohe':
             return self._one_hot()
-        elif self.enc_type is None or self.enc_type == "none":
+        elif self.enc_type is None or self.enc_type == 'none':
             return self.df[self.cat_feats].values
         else:
-            raise Exception("Encoding type not understood")
+            raise Exception('Encoding type not understood')
 
     def transform(self, dataframe):
         if self.handle_na:
             for c in self.cat_feats:
                 dataframe.loc[:, c] = dataframe.loc[:, c].astype(str).fillna(
-                    "-9999999")
+                    '-9999999')
 
-        if self.enc_type == "label":
+        if self.enc_type == 'label':
             for c, lbl in self.label_encoders.items():
                 dataframe.loc[:, c] = lbl.transform(dataframe[c].values)
             return dataframe
 
-        elif self.enc_type == "binary":
+        elif self.enc_type == 'binary':
             for c, lbl in self.binary_encoders.items():
                 val = lbl.transform(dataframe[c].values)
                 dataframe = dataframe.drop(c, axis=1)
 
                 for j in range(val.shape[1]):
-                    new_col_name = c + f"__bin_{j}"
+                    new_col_name = c + f'__bin_{j}'
                     dataframe[new_col_name] = val[:, j]
             return dataframe
 
-        elif self.enc_type == "ohe":
+        elif self.enc_type == 'ohe':
             return self.ohe(dataframe[self.cat_feats].values)
 
         else:
-            raise Exception("Encoding type not understood")
+            raise Exception('Encoding type not understood')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     import pandas as pd
     df = pd.read_csv(
-        "/media/robin/DATA/datatsets/structure_data/titanic/Titanic.csv")
-    cols = ["Sex", "Embarked"]
+        '/media/robin/DATA/datatsets/structure_data/titanic/Titanic.csv')
+    cols = ['Sex', 'Embarked']
     cat_feats = CategoricalFeatures(
-        df, categorical_cols=cols, encoding_type="binary", handle_na=True)
+        df, categorical_cols=cols, encoding_type='binary', handle_na=True)
     full_data_transformed = cat_feats.fit_transform()
     print(full_data_transformed)
     print(cat_feats.feat_names)

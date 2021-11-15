@@ -3,25 +3,26 @@ Author: jianzhnie
 Date: 2021-11-12 20:28:07
 LastEditTime: 2021-11-12 21:34:20
 LastEditors: jianzhnie
-Description: 
+Description:
 
 '''
 
-from functools import partial
 import logging
-from utils import agg_text_columns_func, get_matching_cols, convert_to_func
+from functools import partial
+
 import pandas as pd
+from utils import agg_text_columns_func, convert_to_func, get_matching_cols
 
 logger = logging.getLogger(__name__)
 
 
 def text_token(data_df,
-              text_cols,
-              tokenizer,
-              sep_text_token_str=' ',
-              empty_text_values=None,
-              replace_empty_text=None,
-              max_token_length=None):
+               text_cols,
+               tokenizer,
+               sep_text_token_str=' ',
+               empty_text_values=None,
+               replace_empty_text=None,
+               max_token_length=None):
 
     if empty_text_values is None:
         empty_text_values = ['nan', 'None']
@@ -47,15 +48,15 @@ def text_token(data_df,
 if __name__ == '__main__':
 
     from transformers import AutoConfig, AutoTokenizer
-    config = AutoConfig.from_pretrained("bert-base-uncased")
-    tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+    config = AutoConfig.from_pretrained('bert-base-uncased')
+    tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
     df = pd.read_csv(
-        "/Users/jianzhengnie/work/Multimodal-Toolkit/datasets/Womens_Clothing_E-Commerce_Reviews/test.csv"
+        '/Users/jianzhengnie/work/Multimodal-Toolkit/datasets/Womens_Clothing_E-Commerce_Reviews/test.csv'
     )
-    text_cols = ["Title", "Review Text"]
-    text_cols = ["Division Name", "Department Name", "Class Name"]
+    text_cols = ['Title', 'Review Text']
+    text_cols = ['Division Name', 'Department Name', 'Class Name']
     print(df[text_cols])
-    
+
     text_cols_func = convert_to_func(text_cols)
     empty_text_values = ['nan', 'None']
     replace_empty_text = None
@@ -69,7 +70,7 @@ if __name__ == '__main__':
     print(texts_list)
     text_encoder = text_token(
         df,
-        text_cols=["Title", "Review Text"],
+        text_cols=['Title', 'Review Text'],
         tokenizer=tokenizer,
         sep_text_token_str=tokenizer.sep_token,
         max_token_length=16,
