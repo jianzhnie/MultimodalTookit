@@ -1,11 +1,10 @@
-import warnings
-from typing import List, Tuple, Union
+from typing import List
 
 import numpy as np
 import pandas as pd
 from pytorch_widedeep.preprocessing.base_preprocessor import BasePreprocessor, check_is_fitted
 from pytorch_widedeep.utils.deeptabular_utils import LabelEncoder
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import PowerTransformer, QuantileTransformer, StandardScaler
 
 
 def embed_sz_rule(n_cat):
@@ -19,7 +18,7 @@ class TabPreprocessor(BasePreprocessor):
 
     Parameters
     ----------
-    embed_cols: List, default = None
+    categroical_cols: List, default = None
         List containing the name of the columns that will be represented by
         embeddings or a Tuple with the name and the embedding dimension. e.g.:
         [('education',32), ('relationship',16), ...]
@@ -38,7 +37,7 @@ class TabPreprocessor(BasePreprocessor):
         :math:`min(600, int(1.6 \times n_{cat}^{0.56}))`
     default_embed_dim: int, default=16
         Dimension for the embeddings used for the ``deeptabular``
-        component if the embed_dim is not provided in the ``embed_cols``
+        component if the embed_dim is not provided in the ``categroical_cols``
         parameter
     already_standard: List, default = None
         List with the name of the continuous cols that do not need to be
@@ -51,7 +50,7 @@ class TabPreprocessor(BasePreprocessor):
         Boolean indicating whether the preprocessed data will be passed to a
         transformer-based model
         (See :obj:`pytorch_widedeep.models.transformers`). If ``True``, the
-        param ``embed_cols`` must just be a list containing the categorical
+        param ``categroical_cols`` must just be a list containing the categorical
         columns: e.g.:['education', 'relationship', ...] This is because they
         will all be encoded using embeddings of the same dim.
     with_cls_token: bool, default = False
@@ -98,9 +97,9 @@ class TabPreprocessor(BasePreprocessor):
     >>> import pandas as pd
     >>> from pytorch_widedeep.preprocessing import TabPreprocessor
     >>> df = pd.DataFrame({'color': ['r', 'b', 'g'], 'size': ['s', 'n', 'l'], 'age': [25, 40, 55]})
-    >>> embed_cols = [('color',5), ('size',5)]
+    >>> categroical_cols = [('color',5), ('size',5)]
     >>> cont_cols = ['age']
-    >>> deep_preprocessor = TabPreprocessor(embed_cols=embed_cols, continuous_cols=cont_cols)
+    >>> deep_preprocessor = TabPreprocessor(categroical_cols=continuous_cols, continuous_cols=cont_cols)
     >>> X_tab = deep_preprocessor.fit_transform(df)
     >>> deep_preprocessor.embed_dim
     {'color': 5, 'size': 5}
@@ -108,51 +107,75 @@ class TabPreprocessor(BasePreprocessor):
     {'color': 0, 'size': 1, 'age': 2}
     """
 
+    CONTINUOUS_TRANSFORMS = {
+        'quantile_uniform': {
+            'callable': QuantileTransformer,
+            'params': dict(output_distribution='uniform', random_state=42),
+        },
+        'quantile_normal': {
+            'callable': QuantileTransformer,
+            'params': dict(output_distribution='normal', random_state=42),
+        },
+        'box_cox': {
+            'callable': PowerTransformer,
+            'params': dict(method='box-cox', standardize=True),
+        },
+        'yeo_johnson': {
+            'callable': PowerTransformer,
+            'params': dict(method='yeo-johnson', standardize=True),
+        },
+        'standard_scaler': {
+            'callable': StandardScaler,
+            'params': dict(with_mean=True, with_std=True),
+        },
+    }
+
     def __init__(
         self,
-        embed_cols: Union[List[str], List[Tuple[str, int]]] = None,
+        categroical_cols: List[str] = None,
         continuous_cols: List[str] = None,
-        scale: bool = True,
+        date_cols: List[str] = None,
+        category_encoding_type: str = None,
+        continuous_transform_method: str = None,
+        handle_na: bool = True,
         auto_embed_dim: bool = True,
         default_embed_dim: int = 16,
-        already_standard: List[str] = None,
         for_transformer: bool = False,
         with_cls_token: bool = False,
         shared_embed: bool = False,
-        verbose: int = 1,
     ):
         super(TabPreprocessor, self).__init__()
 
-        self.embed_cols = embed_cols
+        self.categroical_cols = categroical_cols
         self.continuous_cols = continuous_cols
-        self.scale = scale
+        self.date_cols = date_cols
+        self.category_encoding_type = category_encoding_type
+        self.continuous_transform_method = continuous_transform_method
+        self.handle_na = handle_na
         self.auto_embed_dim = auto_embed_dim
         self.default_embed_dim = default_embed_dim
-        self.already_standard = already_standard
         self.for_transformer = for_transformer
         self.with_cls_token = with_cls_token
         self.shared_embed = shared_embed
-        self.verbose = verbose
-
         self.is_fitted = False
 
-        if (self.embed_cols is None) and (self.continuous_cols is None):
+        if (self.categroical_cols is None) and (self.continuous_cols is None):
             raise ValueError(
-                "'embed_cols' and 'continuous_cols' are 'None'. Please, define at least one of the two."
+                "'categroical_cols' and 'continuous_cols' are 'None'. Please, define at least one of the two."
             )
 
         transformer_error_message = (
-            "If for_transformer is 'True' embed_cols must be a list "
+            "If for_transformer is 'True' categroical_cols must be a list "
             ' of strings with the columns to be encoded as embeddings.')
-        if self.for_transformer and self.embed_cols is None:
+        if self.for_transformer and self.categroical_cols is None:
             raise ValueError(transformer_error_message)
-        if self.for_transformer and isinstance(self.embed_cols[0],
+        if self.for_transformer and isinstance(self.categroical_cols[0],
                                                tuple):  # type: ignore[index]
             raise ValueError(transformer_error_message)
 
     def fit(self, df: pd.DataFrame) -> BasePreprocessor:
         """Fits the Preprocessor and creates required attributes."""
-        if self.embed_cols is not None:
+        if self.categroical_cols is not None:
             df_emb = self._prepare_embed(df)
             self.label_encoder = LabelEncoder(
                 columns_to_encode=df_emb.columns.tolist(),
@@ -167,28 +190,31 @@ class TabPreprocessor(BasePreprocessor):
                 else:
                     self.embeddings_input.append(
                         (k, len(v), self.embed_dim[k]))
-        if self.continuous_cols is not None:
+
+        if (self.continuous_transform_method
+                is not None) and (len(self.continuous_cols) > 0):
+            transform_method = self.CONTINUOUS_TRANSFORMS[
+                self.continuous_transform_method]
+            self.continuous_transformer = transform_method['callable'](
+                **transform_method['params'])
             df_cont = self._prepare_continuous(df)
-            if self.scale:
-                df_std = df_cont[self.standardize_cols]
-                self.scaler = StandardScaler().fit(df_std.values)
-            elif self.verbose:
-                warnings.warn('Continuous columns will not be normalised')
+            self.continuous_transformer.fit(df_cont)
         self.is_fitted = True
         return self
 
     def transform(self, df: pd.DataFrame) -> np.ndarray:
         """Returns the processed ``dataframe`` as a np.ndarray."""
         check_is_fitted(self, condition=self.is_fitted)
-        if self.embed_cols is not None:
+        if self.categroical_cols is not None:
             df_emb = self._prepare_embed(df)
             df_emb = self.label_encoder.transform(df_emb)
         if self.continuous_cols is not None:
             df_cont = self._prepare_continuous(df)
-            if self.scale:
-                df_std = df_cont[self.standardize_cols]
-                df_cont[self.standardize_cols] = self.scaler.transform(
-                    df_std.values)
+            if self.continuous_transform_method:
+                df_cont[
+                    self.
+                    continuous_cols] = self.continuous_transformer.transform(
+                        df_cont)
         try:
             df_deep = pd.concat([df_emb, df_cont], axis=1)
         except NameError:
@@ -210,18 +236,20 @@ class TabPreprocessor(BasePreprocessor):
         """
         decoded = pd.DataFrame(encoded, columns=self.column_idx.keys())
         # embeddings back to original category
-        if self.embed_cols is not None:
-            if isinstance(self.embed_cols[0], tuple):
-                emb_c: List = [c[0] for c in self.embed_cols]
+        if self.categroical_cols is not None:
+            if isinstance(self.categroical_cols[0], tuple):
+                emb_c: List = [c[0] for c in self.continuous_cols]
             else:
-                emb_c = self.embed_cols.copy()
+                emb_c = self.categroical_cols.copy()
             for c in emb_c:
                 decoded[c] = decoded[c].map(
                     self.label_encoder.inverse_encoding_dict[c])
         # continuous_cols back to non-standarised
         try:
-            decoded[self.continuous_cols] = self.scaler.inverse_transform(
-                decoded[self.continuous_cols])
+            decoded[
+                self.
+                continuous_cols] = self.continuous_transformer.inverse_transform(
+                    decoded[self.continuous_cols])
         except AttributeError:
             pass
 
@@ -235,39 +263,61 @@ class TabPreprocessor(BasePreprocessor):
         return self.fit(df).transform(df)
 
     def _prepare_embed(self, df: pd.DataFrame) -> pd.DataFrame:
+        if self.handle_na:
+            for c in self.categroical_cols:
+                df.loc[:, c] = df.loc[:, c].astype(str)
+            df[self.continuous_cols].fillna(
+                df[self.continuous_cols].mode(), inplace=True)
+
         if self.for_transformer:
             if self.with_cls_token:
-                df_cls = df.copy()[self.embed_cols]
+                df_cls = df.copy()[self.categroical_cols]
                 df_cls.insert(loc=0, column='cls_token', value='[CLS]')
                 return df_cls
             else:
-                return df.copy()[self.embed_cols]
+                return df.copy()[self.categroical_cols]
         else:
-            if isinstance(self.embed_cols[0], tuple):
-                self.embed_dim = dict(self.embed_cols)  # type: ignore
-                embed_colname = [emb[0] for emb in self.embed_cols]
-            elif self.auto_embed_dim:
-                n_cats = {col: df[col].nunique() for col in self.embed_cols}
+            if self.auto_embed_dim:
+                n_cats = {
+                    col: df[col].nunique()
+                    for col in self.categroical_cols
+                }
                 self.embed_dim = {
                     col: embed_sz_rule(n_cat)
                     for col, n_cat in n_cats.items()
                 }  # type: ignore[misc]
-                embed_colname = self.embed_cols  # type: ignore
+                embed_colname = self.categroical_cols  # type: ignore
             else:
                 self.embed_dim = {
                     e: self.default_embed_dim
-                    for e in self.embed_cols
+                    for e in self.categroical_cols
                 }  # type: ignore
-                embed_colname = self.embed_cols  # type: ignore
+                embed_colname = self.categroical_cols  # type: ignore
             return df.copy()[embed_colname]
 
     def _prepare_continuous(self, df: pd.DataFrame) -> pd.DataFrame:
-        if self.scale:
-            if self.already_standard is not None:
-                self.standardize_cols = [
-                    c for c in self.continuous_cols
-                    if c not in self.already_standard
-                ]
-            else:
-                self.standardize_cols = self.continuous_cols
-        return df.copy()[self.continuous_cols]
+        df = df.copy()[self.continuous_cols]
+        df[self.continuous_cols] = df[self.continuous_cols].astype(float)
+        if self.handle_na:
+            df[self.continuous_cols] = df[self.continuous_cols].fillna(
+                dict(df[self.continuous_cols].median()), inplace=False)
+        return df
+
+
+if __name__ == '__main__':
+    import pandas as pd
+    df = pd.read_csv(
+        '/media/robin/DATA/datatsets/structure_data/titanic/Titanic.csv')
+    cat_cols = ['Sex', 'Embarked']
+    con_cols = ['Fare', 'Age']
+    print(df[cat_cols + con_cols])
+    tabpreprocessor = TabPreprocessor(
+        categroical_cols=cat_cols,
+        continuous_cols=con_cols,
+        continuous_transform_method='standard_scaler')
+    full_data_transformed = tabpreprocessor.fit_transform(df)
+    print(full_data_transformed)
+    print(tabpreprocessor.embed_dim)
+    print(tabpreprocessor.embeddings_input)
+    df = tabpreprocessor.inverse_transform(full_data_transformed)
+    print(df)
