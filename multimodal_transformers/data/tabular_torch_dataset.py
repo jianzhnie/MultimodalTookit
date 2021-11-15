@@ -1,64 +1,87 @@
-import numpy as np
-import torch
-from torch.utils.data import Dataset as TorchDataset
+import logging
+from typing import List, Optional
+
+import pandas as pd
+from multimodal_transformers.data import TabPreprocessor
+from multimodal_transformers.data.multidomal_dataset import TabularImageTextDataset
+from multimodal_transformers.data.text_encoder import text_token
+from sklearn.model_selection import train_test_split
+from torch.utils.data.dataset import Dataset
+
+logger = logging.getLogger(__name__)
 
 
-class TorchTabularTextDataset(TorchDataset):
-    """
-    :obj:`TorchDataset` wrapper for text dataset with categorical features
-    and numerical features
-
-    Parameters:
-        encodings (:class:`transformers.BatchEncoding`):
-            The output from encode_plus() and batch_encode() methods (tokens, attention_masks, etc) of
-            a transformers.PreTrainedTokenizer
-        categorical_feats (:class:`numpy.ndarray`, of shape :obj:`(n_examples, categorical feat dim)`, `optional`, defaults to :obj:`None`):
-            An array containing the preprocessed categorical features
-        numerical_feats (:class:`numpy.ndarray`, of shape :obj:`(n_examples, numerical feat dim)`, `optional`, defaults to :obj:`None`):
-            An array containing the preprocessed numerical features
-        labels (:class: list` or `numpy.ndarray`, `optional`, defaults to :obj:`None`):
-            The labels of the training examples
-        class_weights (:class:`numpy.ndarray`, of shape (n_classes),  `optional`, defaults to :obj:`None`):
-            Class weights used for cross entropy loss for classification
-        df (:class:`pandas.DataFrame`, `optional`, defaults to :obj:`None`):
-            Model configuration class with all the parameters of the model.
-            This object must also have a tabular_config member variable that is a
-            TabularConfig instance specifying the configs for TabularFeatCombiner
-
-    """
+class MultiFeildDatasets(Dataset):
 
     def __init__(self,
-                 text_encodings,
-                 categorical_feats,
-                 numerical_feats,
-                 labels=None,
-                 label_list=None,
-                 class_weights=None):
-        self.encodings = text_encodings
-        self.cat_feats = categorical_feats
-        self.numerical_feats = numerical_feats
-        self.labels = labels
-        self.class_weights = class_weights
-        self.label_list = label_list if label_list is not None else [
-            i for i in range(len(np.unique(labels)))
-        ]
+                 data_csv_path: str = None,
+                 num_splits: int = None,
+                 validation_ratio: float = None,
+                 text_cols: List[str] = None,
+                 tokenizer: Optional[List] = None,
+                 categorical_cols=None,
+                 numerical_cols=None,
+                 sep_text_token_str=' ',
+                 categorical_encode_type='ohe',
+                 numerical_transformer_method='quantile_normal',
+                 empty_text_values=None,
+                 replace_empty_text=None,
+                 max_token_length=None,
+                 debug=False) -> None:
 
-    def __getitem__(self, idx):
-        item = {
-            key: torch.tensor(val[idx])
-            for key, val in self.encodings.items()
-        }
-        item['labels'] = torch.tensor(
-            self.labels[idx]) if self.labels is not None else None
-        item['cat_feats'] = torch.tensor(self.cat_feats[idx]).float() \
-            if self.cat_feats is not None else torch.zeros(0)
-        item['numerical_feats'] = torch.tensor(self.numerical_feats[idx]).float()\
-            if self.numerical_feats is not None else torch.zeros(0)
-        return item
+        self.data_csv_path = data_csv_path
+        self.num_splits = num_splits
+        self.validattion_ratio = validation_ratio
+        self.text_cols = text_cols
+        self.tokenizer = tokenizer
+        self.categorical_cols = categorical_cols
+        self.numerical_cols = numerical_cols
+        self.sep_text_token_str = sep_text_token_str
+        self.categorical_encode_type = categorical_encode_type
+        self.numerical_transformer_method = numerical_transformer_method
+        self.empty_text_values = empty_text_values
+        self.replace_empty_text = replace_empty_text
+        self.max_token_length = max_token_length
 
-    def __len__(self):
-        return len(self.labels)
+        all_data_df = pd.read_csv(data_csv_path)
+        train_df, val_df = train_test_split(
+            all_data_df,
+            test_size=validation_ratio,
+            shuffle=True,
+            train_size=1 - validation_ratio,
+            random_state=5)
 
-    def get_labels(self):
-        """returns the label names for classification."""
-        return self.label_list
+        dfs = [df for df in [train_df, val_df] if df is not None]
+        data_df = pd.concat(dfs, axis=0)
+        tab_processor = TabPreprocessor(
+            categorical_cols=categorical_cols,
+            continuous_cols=numerical_cols,
+            category_encoding_type=categorical_encode_type,
+            continuous_transform_method=numerical_transformer_method)
+
+        vals = tab_processor.fit_transform()
+        data_df = pd.DataFrame(vals, columns=tab_processor.feat_names)
+
+        len_train = len(train_df)
+        len_val = len(val_df) if val_df is not None else 0
+
+        train_df = data_df.iloc[:len_train]
+        if val_df is not None:
+            val_df = data_df.iloc[len_train:len_train + len_val]
+            len_train = len_train + len_val
+
+        hf_model_text_input, df = text_token(
+            data_df=data_df,
+            text_cols=text_cols,
+            sep_text_token_str=sep_text_token_str,
+            empty_text_values=empty_text_values,
+            replace_empty_text=replace_empty_text,
+            max_token_length=max_token_length)
+
+        categorical_feats = data_df[categorical_cols]
+        numerical_feats = data_df[numerical_cols]
+
+        return TabularImageTextDataset(
+            text_encodings=hf_model_text_input,
+            categorical_feats=categorical_feats,
+            numerical_feats=numerical_feats)
