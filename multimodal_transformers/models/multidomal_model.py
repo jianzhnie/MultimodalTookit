@@ -18,7 +18,7 @@ from torch import Tensor
 warnings.filterwarnings('default', category=UserWarning)
 
 
-class WideDeep(nn.Module):
+class MultidomalModel(nn.Module):
     r"""Main collector class that combines all ``wide``, ``deeptabular``
     (which can be a number of architectures), ``deeptext`` and
     ``deepimage`` models.
@@ -126,7 +126,7 @@ class WideDeep(nn.Module):
         head_linear_first: bool = False,
         pred_dim: int = 1,
     ):
-        super(WideDeep, self).__init__()
+        super(MultidomalModel, self).__init__()
 
         self._check_model_components(
             wide,
@@ -380,6 +380,6 @@ if __name__ == '__main__':
     config.tabular_config = tabular_config
     deeptext = BertWithTabular(config=config)
     print(deeptext)
-    model = WideDeep(deeptabular=tabmlp, deeptext=deeptext)
+    model = MultidomalModel(deeptabular=tabmlp, deeptext=deeptext)
     print(model)
     print(model.deephead)
