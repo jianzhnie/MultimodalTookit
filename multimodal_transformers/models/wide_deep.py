@@ -346,3 +346,40 @@ class WideDeep(nn.Module):
                 "if a custom 'deephead' is used its input features ({}) must be equal to "
                 'the output features of the deep component ({})'.format(
                     deephead_inp_feat, output_dim))
+
+
+if __name__ == '__main__':
+    import pandas as pd
+    import sys
+    from tabular.tab_mlp import TabMlp
+    from text.deeptext import BertWithTabular
+    from transformers import AutoConfig
+    from config import TabularConfig
+
+    sys.path.append("../")
+    from data.preprocessor.tab_preprocessor import TabPreprocessor
+    df = pd.read_csv(
+        '/media/robin/DATA/datatsets/structure_data/titanic/Titanic.csv')
+    cat_cols = ['Sex', 'Embarked']
+    con_cols = ['Fare', 'Age']
+    print(df[cat_cols + con_cols])
+    tabpreprocessor = TabPreprocessor(
+        categroical_cols=cat_cols,
+        continuous_cols=con_cols,
+        continuous_transform_method='standard_scaler')
+    full_data_transformed = tabpreprocessor.fit_transform(df)
+
+    tabmlp = TabMlp(
+        mlp_hidden_dims=[8, 4],
+        column_idx=tabpreprocessor.column_idx,
+        embed_input=tabpreprocessor.embeddings_input)
+
+    tabular_config = TabularConfig(num_labels=1)
+    model_name = 'bert-base-uncased'
+    config = AutoConfig.from_pretrained(model_name)
+    config.tabular_config = tabular_config
+    deeptext = BertWithTabular(config=config)
+    print(deeptext)
+    model = WideDeep(deeptabular=tabmlp, deeptext=deeptext)
+    print(model)
+    print(model.deephead)

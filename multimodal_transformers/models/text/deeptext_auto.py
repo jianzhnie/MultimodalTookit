@@ -144,5 +144,15 @@ class AutoModelWithText:
 
 
 if __name__ == '__main__':
+    model_name = "bert-base-uncased"
+    config = AutoConfig.from_pretrained(model_name)
     model = AutoModelWithText.from_pretrained('bert-base-uncased')
-    print(model)
+    print(config)
+    from transformers import pipeline, AutoModelForSequenceClassification
+    from transformers import AutoTokenizer
+    # PYTORCH CODE
+    model_name = "bert-base-uncased"
+    model = AutoModelForSequenceClassification.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    classifier = pipeline('sentiment-analysis', model=model, tokenizer=tokenizer)
+    print(classifier)

@@ -1,7 +1,7 @@
 '''
 Author: jianzhnie
 Date: 2021-11-09 14:40:19
-LastEditTime: 2021-11-15 09:42:04
+LastEditTime: 2021-11-15 18:25:26
 LastEditors: jianzhnie
 Description:
 
@@ -13,8 +13,6 @@ from transformers import (AlbertForSequenceClassification,
                           RobertaForSequenceClassification,
                           XLMForSequenceClassification,
                           XLNetForSequenceClassification)
-
-
 class BertWithTabular(BertForSequenceClassification):
     """Bert Model transformer with a sequence classification/regression head as
     well as a TabularFeatCombiner module to combine categorical and numerical
@@ -27,8 +25,12 @@ class BertWithTabular(BertForSequenceClassification):
             :obj:`TabularConfig` instance specifying the configs for :obj:`TabularFeatCombiner`
     """
 
-    def __init__(self, *model_args, **kwargs):
-        super().__init__(*model_args, **kwargs)
+    def __init__(self, config):
+        super().__init__(config)
+
+        self.text_feat_dim = config.hidden_size
+        self.hidden_dropout_prob = config.hidden_dropout_prob
+        self.output_dim = self.text_feat_dim
 
     def forward(self,
                 input_ids=None,
@@ -37,8 +39,6 @@ class BertWithTabular(BertForSequenceClassification):
                 position_ids=None,
                 head_mask=None,
                 inputs_embeds=None,
-                labels=None,
-                class_weights=None,
                 output_attentions=None,
                 output_hidden_states=None):
         r"""
