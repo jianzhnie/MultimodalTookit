@@ -1,7 +1,7 @@
 '''
 Author: jianzhnie
 Date: 2021-11-09 14:40:19
-LastEditTime: 2021-11-11 19:20:30
+LastEditTime: 2021-11-15 09:42:04
 LastEditors: jianzhnie
 Description:
 
@@ -40,9 +40,7 @@ class BertWithTabular(BertForSequenceClassification):
                 labels=None,
                 class_weights=None,
                 output_attentions=None,
-                output_hidden_states=None,
-                cat_feats=None,
-                numerical_feats=None):
+                output_hidden_states=None):
         r"""
         class_weights (:obj:`torch.FloatTensor` of shape :obj:`(tabular_config.num_labels,)`, `optional`, defaults to :obj:`None`):
             Class weights to be used for cross entropy loss function for classification task
@@ -106,9 +104,7 @@ class RobertaWithTabular(RobertaForSequenceClassification):
                 labels=None,
                 output_attentions=None,
                 output_hidden_states=None,
-                class_weights=None,
-                cat_feats=None,
-                numerical_feats=None):
+                class_weights=None):
         r"""
         class_weights (:obj:`torch.FloatTensor` of shape :obj:`(tabular_config.num_labels,)`, `optional`, defaults to :obj:`None`):
             Class weights to be used for cross entropy loss function for classification task
@@ -173,9 +169,7 @@ class DistilBertWithTabular(DistilBertForSequenceClassification):
                 labels=None,
                 output_attentions=None,
                 output_hidden_states=None,
-                class_weights=None,
-                cat_feats=None,
-                numerical_feats=None):
+                class_weights=None):
         r"""
         class_weights (:obj:`torch.FloatTensor` of shape :obj:`(tabular_config.num_labels,)`,`optional`, defaults to :obj:`None`):
             Class weights to be used for cross entropy loss function for classification task
@@ -241,9 +235,7 @@ class AlbertWithTabular(AlbertForSequenceClassification):
                 output_attentions=None,
                 output_hidden_states=None,
                 return_dict=None,
-                class_weights=None,
-                cat_feats=None,
-                numerical_feats=None):
+                class_weights=None):
         r"""
         labels (:obj:`torch.LongTensor` of shape :obj:`(batch_size,)`, `optional`, defaults to :obj:`None`):
             Labels for computing the sequence classification/regression loss.
@@ -300,9 +292,7 @@ class XLNetWithTabular(XLNetForSequenceClassification):
                 output_attentions=None,
                 output_hidden_states=None,
                 return_dict=None,
-                class_weights=None,
-                cat_feats=None,
-                numerical_feats=None):
+                class_weights=None):
         r"""
         labels (:obj:`torch.LongTensor` of shape :obj:`(batch_size,)`, `optional`, defaults to :obj:`None`)
             Labels for computing the sequence classification/regression loss.
@@ -364,9 +354,7 @@ class XLMWithTabular(XLMForSequenceClassification):
                 output_attentions=None,
                 output_hidden_states=None,
                 return_dict=None,
-                class_weights=None,
-                cat_feats=None,
-                numerical_feats=None):
+                class_weights=None):
         r"""
         labels (:obj:`torch.LongTensor` of shape :obj:`(batch_size,)`, `optional`, defaults to :obj:`None`):
             Labels for computing the sequence classification/regression loss.
