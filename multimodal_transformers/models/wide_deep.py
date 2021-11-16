@@ -356,7 +356,7 @@ if __name__ == '__main__':
     from transformers import AutoConfig
     from config import TabularConfig
 
-    sys.path.append("../")
+    sys.path.append('../')
     from data.preprocessor.tab_preprocessor import TabPreprocessor
     df = pd.read_csv(
         '/media/robin/DATA/datatsets/structure_data/titanic/Titanic.csv')

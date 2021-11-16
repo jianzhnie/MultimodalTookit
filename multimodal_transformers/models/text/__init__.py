@@ -10,5 +10,4 @@ Description:
 from .deeptext import BertWithTabular
 from .deeptext_auto import AutoModelWithText
 
-
 __all__ = ['BertWithTabular', 'AutoModelWithText']

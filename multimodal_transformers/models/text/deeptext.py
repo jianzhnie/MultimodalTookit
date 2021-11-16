@@ -13,6 +13,8 @@ from transformers import (AlbertForSequenceClassification,
                           RobertaForSequenceClassification,
                           XLMForSequenceClassification,
                           XLNetForSequenceClassification)
+
+
 class BertWithTabular(BertForSequenceClassification):
     """Bert Model transformer with a sequence classification/regression head as
     well as a TabularFeatCombiner module to combine categorical and numerical

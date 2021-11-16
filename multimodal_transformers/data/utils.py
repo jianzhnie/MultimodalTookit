@@ -1,7 +1,7 @@
 '''
 Author: jianzhnie
 Date: 2021-11-12 15:42:02
-LastEditTime: 2021-11-15 18:35:06
+LastEditTime: 2021-11-16 14:16:44
 LastEditors: jianzhnie
 Description:
 
@@ -9,7 +9,7 @@ Description:
 import logging
 import types
 
-from preprocessor.category_encoder import CategoricalFeatureEncoder
+from multimodal_transformers.data.preprocessor.category_encoder import CategoricalFeatureEncoder
 
 logger = logging.getLogger(__name__)
 

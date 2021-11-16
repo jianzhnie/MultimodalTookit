@@ -1,7 +1,7 @@
 '''
 Author: jianzhnie
 Date: 2021-11-12 20:28:07
-LastEditTime: 2021-11-15 10:13:15
+LastEditTime: 2021-11-16 14:35:25
 LastEditors: jianzhnie
 Description:
 
@@ -11,18 +11,19 @@ import logging
 from functools import partial
 
 import pandas as pd
-from utils import agg_text_columns_func, convert_to_func, get_matching_cols
+
+from .utils import agg_text_columns_func, convert_to_func, get_matching_cols
 
 logger = logging.getLogger(__name__)
 
 
-def text_token(data_df,
-               text_cols,
-               tokenizer,
-               sep_text_token_str=' ',
-               empty_text_values=None,
-               replace_empty_text=None,
-               max_token_length=None):
+def get_text_token(data_df,
+                   text_cols,
+                   tokenizer,
+                   sep_text_token_str=' ',
+                   empty_text_values=None,
+                   replace_empty_text=None,
+                   max_token_length=None):
 
     if empty_text_values is None:
         empty_text_values = ['nan', 'None']
@@ -67,7 +68,7 @@ if __name__ == '__main__':
     print(text_cols)
     logger.info(f'Text columns: {texts_cols}')
     texts_list = df[texts_cols].agg(agg_func, axis=1).tolist()
-    text_encoder, df = text_token(
+    text_encoder, df = get_text_token(
         df,
         text_cols=['Title', 'Review Text'],
         tokenizer=tokenizer,

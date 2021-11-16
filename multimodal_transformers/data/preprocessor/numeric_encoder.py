@@ -1,7 +1,7 @@
 '''
 Author: jianzhnie
 Date: 2021-11-12 15:40:06
-LastEditTime: 2021-11-15 18:33:32
+LastEditTime: 2021-11-16 14:37:48
 LastEditors: jianzhnie
 Description:
 
@@ -71,7 +71,7 @@ class NumericalFeatureTransformer(BasePreprocessor):
                  numerical_cols: List[str] = None,
                  numerical_transformer_method: str = None,
                  handle_na: bool = True):
-        super(NumericalPreprocessor, self).__init__()
+        super(NumericalFeatureTransformer, self).__init__()
 
         self.numerical_cols = numerical_cols
         self.numerical_transformer_method = numerical_transformer_method
@@ -138,7 +138,7 @@ if __name__ == '__main__':
         '/media/robin/DATA/datatsets/structure_data/titanic/Titanic.csv')
     cols = ['Fare', 'Age']
     print(df[cols])
-    cat_feats = NumericalPreprocessor(
+    cat_feats = NumericalFeatureTransformer(
         numerical_cols=cols, numerical_transformer_method='quantile_uniform')
     full_data_transformed = cat_feats.fit_transform(df)
     print(full_data_transformed)

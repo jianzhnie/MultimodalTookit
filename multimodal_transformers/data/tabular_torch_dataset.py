@@ -1,22 +1,22 @@
-from functools import partial
 import logging
-from os.path import join, exists
+from functools import partial
+from os.path import exists, join
+
+import pandas as pd
 import pandas as pd
 from sklearn.model_selection import KFold, train_test_split
 from torch.utils.data.dataset import Dataset
+
 from .multidomal_dataset import TorchTabularTextDataset
-import logging
-from functools import partial
-import pandas as pd
-from .utils import agg_text_columns_func, convert_to_func, get_matching_cols
 from .preprocessor import TabPreprocessor
+from .utils import agg_text_columns_func, convert_to_func, get_matching_cols
 
 logger = logging.getLogger(__name__)
 
 
 class MultimodalDatasets(Dataset):
-    """
-    Function to load tabular and text data from a specified folder into folds
+    """Function to load tabular and text data from a specified folder into
+    folds.
 
     Loads train, test and/or validation text and tabular data from specified
     csv path into num_splits of train, val and test for Kfold cross validation.
@@ -66,7 +66,7 @@ class MultimodalDatasets(Dataset):
                 This tuple contains three lists representing the splits of
                 training, validation and testing sets. The length of the lists is
                 equal to the number of folds specified by `num_splits`
-        """
+    """
 
     def __init__(self,
                  data_csv_path=None,
@@ -164,7 +164,7 @@ class MultimodalDatasets(Dataset):
         max_token_length=None,
         debug=False,
     ):
-        """Function to load a single dataset given a pandas DataFrame
+        """Function to load a single dataset given a pandas DataFrame.
 
         Given a DataFrame, this function loads the data to a :obj:`torch_dataset.TorchTextDataset`
         object which can be used in a :obj:`torch.utils.data.DataLoader`.
