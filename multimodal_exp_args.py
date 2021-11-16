@@ -1,53 +1,49 @@
-from dataclasses import dataclass, field
 import json
 import logging
+from dataclasses import dataclass, field
 from typing import Optional, Tuple
 
 import torch
-from transformers.training_args import TrainingArguments, torch_required, cached_property
+from transformers.training_args import TrainingArguments, cached_property, torch_required
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class ModelArguments:
-    """
-    Arguments pertaining to which model/config/tokenizer we are going to fine-tune from.
-    """
+    """Arguments pertaining to which model/config/tokenizer we are going to
+    fine-tune from."""
 
     model_name_or_path: str = field(
         metadata={
-            "help":
-            "Path to pretrained model or model identifier from huggingface.co/models"
+            'help':
+            'Path to pretrained model or model identifier from huggingface.co/models'
         })
     config_name: Optional[str] = field(
         default=None,
         metadata={
-            "help":
-            "Pretrained config name or path if not the same as model_name"
+            'help':
+            'Pretrained config name or path if not the same as model_name'
         })
     tokenizer_name: Optional[str] = field(
         default=None,
         metadata={
-            "help":
-            "Pretrained tokenizer name or path if not the same as model_name"
+            'help':
+            'Pretrained tokenizer name or path if not the same as model_name'
         })
     cache_dir: Optional[str] = field(
         default=None,
         metadata={
-            "help":
-            "Where do you want to store the pretrained models downloaded from s3"
+            'help':
+            'Where do you want to store the pretrained models downloaded from s3'
         })
 
 
 @dataclass
 class MultimodalDataTrainingArguments:
-    """
-    Arguments pertaining to how we combine tabular features
-    Using `HfArgumentParser` we can turn this class
-    into argparse arguments to be able to specify them on
-    the command line.
-    """
+    """Arguments pertaining to how we combine tabular features Using
+    `HfArgumentParser` we can turn this class into argparse arguments to be
+    able to specify them on the command line."""
 
     data_path: str = field(
         metadata={
@@ -116,10 +112,10 @@ class MultimodalDataTrainingArguments:
             'choices': ['yeo_johnson', 'box_cox', 'quantile_normal', 'none']
         })
     task: str = field(
-        default="classification",
+        default='classification',
         metadata={
-            "help": "The downstream training task",
-            "choices": ["classification", "regression"]
+            'help': 'The downstream training task',
+            'choices': ['classification', 'regression']
         })
 
     mlp_division: int = field(
@@ -156,8 +152,8 @@ class MultimodalDataTrainingArguments:
         default=0.2,
         metadata={
             'help':
-            "the beta hyperparameters used for gating tabular data "
-            "see https://www.aclweb.org/anthology/2020.acl-main.214.pdf"
+            'the beta hyperparameters used for gating tabular data '
+            'see https://www.aclweb.org/anthology/2020.acl-main.214.pdf'
         })
 
     def __post_init__(self):
@@ -192,15 +188,15 @@ class OurTrainingArguments(TrainingArguments):
         })
 
     do_eval: bool = field(
-        default=True, metadata={"help": "Whether to run eval on the dev set."})
+        default=True, metadata={'help': 'Whether to run eval on the dev set.'})
     do_predict: bool = field(
         default=True,
-        metadata={"help": "Whether to run predictions on the test set."})
+        metadata={'help': 'Whether to run predictions on the test set.'})
 
     evaluate_during_training: bool = field(
         default=True,
         metadata={
-            "help": "Run evaluation during training at each logging step."
+            'help': 'Run evaluation during training at each logging step.'
         },
     )
 
@@ -210,13 +206,13 @@ class OurTrainingArguments(TrainingArguments):
     gradient_accumulation_steps: int = field(
         default=1,
         metadata={
-            "help":
-            "Number of updates steps to accumulate before performing a backward/update pass."
+            'help':
+            'Number of updates steps to accumulate before performing a backward/update pass.'
         },
     )
 
     learning_rate: float = field(
-        default=5e-5, metadata={"help": "The initial learning rate for Adam."})
+        default=5e-5, metadata={'help': 'The initial learning rate for Adam.'})
 
     def __post_init__(self):
         if self.debug_dataset:
@@ -226,10 +222,10 @@ class OurTrainingArguments(TrainingArguments):
 
     @cached_property
     @torch_required
-    def _setup_devices(self) -> Tuple["torch.device", int]:
-        logger.info("PyTorch: setting up devices")
+    def _setup_devices(self) -> Tuple['torch.device', int]:
+        logger.info('PyTorch: setting up devices')
         if self.no_cuda:
-            device = torch.device("cpu")
+            device = torch.device('cpu')
             n_gpu = 0
         elif self.local_rank == -1:
             # if n_gpu is > 1 we'll use nn.DataParallel.
@@ -239,16 +235,16 @@ class OurTrainingArguments(TrainingArguments):
             # GPUs available in the environment, so `CUDA_VISIBLE_DEVICES=1,2` with `cuda:0`
             # will use the first GPU in that env, i.e. GPU#1
             device = torch.device(
-                "cuda:0" if torch.cuda.is_available() else "cpu")
+                'cuda:0' if torch.cuda.is_available() else 'cpu')
             n_gpu = torch.cuda.device_count()
         else:
             # Here, we'll use torch.distributed.
             # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
-            torch.distributed.init_process_group(backend="nccl")
-            device = torch.device("cuda", self.local_rank)
+            torch.distributed.init_process_group(backend='nccl')
+            device = torch.device('cuda', self.local_rank)
             n_gpu = 1
 
-        if device.type == "cuda":
+        if device.type == 'cuda':
             torch.cuda.set_device(device)
 
         return device, n_gpu

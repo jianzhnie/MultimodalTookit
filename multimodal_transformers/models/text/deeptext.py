@@ -1,19 +1,20 @@
 '''
 Author: jianzhnie
 Date: 2021-11-09 14:40:19
-LastEditTime: 2021-11-15 18:25:26
+LastEditTime: 2021-11-16 18:48:13
 LastEditors: jianzhnie
 Description:
 
 '''
 import torch.nn as nn
-from transformers import (AlbertForSequenceClassification,
-                          BertForSequenceClassification,
-                          DistilBertForSequenceClassification,
+from transformers import (AlbertModel,
+                          BertModel,
+                          DistilBertModel,
                           RobertaForSequenceClassification,
                           XLMForSequenceClassification,
                           XLNetForSequenceClassification)
-class BertWithTabular(BertForSequenceClassification):
+
+class BertWithTabular(BertModel):
     """Bert Model transformer with a sequence classification/regression head as
     well as a TabularFeatCombiner module to combine categorical and numerical
     features with the Bert pooled output.

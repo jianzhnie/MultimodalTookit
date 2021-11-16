@@ -1,6 +1,6 @@
-from os import makedirs
-from os.path import dirname, abspath, join, exists
 import re
+from os import makedirs
+from os.path import abspath, dirname, exists, join
 
 
 def get_root_path():

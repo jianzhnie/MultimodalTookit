@@ -1,8 +1,9 @@
 from collections import OrderedDict
 
-from deeptext import AlbertWithTabular, BertWithTabular, DistilBertWithTabular, RobertaWithTabular, XLMWithTabular, XLNetWithTabular
 from transformers import AlbertConfig, AutoConfig, BertConfig, DistilBertConfig, RobertaConfig, XLMConfig, XLNetConfig
 from transformers.configuration_utils import PretrainedConfig
+
+from .deeptext import AlbertWithTabular, BertWithTabular, DistilBertWithTabular, RobertaWithTabular, XLMWithTabular, XLNetWithTabular
 
 MODEL_FOR_SEQUENCE_W_TABULAR_CLASSIFICATION_MAPPING = OrderedDict([
     (RobertaConfig, RobertaWithTabular), (BertConfig, BertWithTabular),
@@ -144,15 +145,16 @@ class AutoModelWithText:
 
 
 if __name__ == '__main__':
-    model_name = "bert-base-uncased"
+    model_name = 'bert-base-uncased'
     config = AutoConfig.from_pretrained(model_name)
     model = AutoModelWithText.from_pretrained('bert-base-uncased')
     print(config)
     from transformers import pipeline, AutoModelForSequenceClassification
     from transformers import AutoTokenizer
     # PYTORCH CODE
-    model_name = "bert-base-uncased"
+    model_name = 'bert-base-uncased'
     model = AutoModelForSequenceClassification.from_pretrained(model_name)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    classifier = pipeline('sentiment-analysis', model=model, tokenizer=tokenizer)
+    classifier = pipeline(
+        'sentiment-analysis', model=model, tokenizer=tokenizer)
     print(classifier)
