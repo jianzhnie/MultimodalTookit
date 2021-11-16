@@ -70,9 +70,10 @@ def main():
         cache_dir=model_args.cache_dir,
     )
 
-    data_df = pd.read_csv(data_args.data_path)
+    data_df = pd.read_csv(
+        os.path.join(data_args.data_path, 'train.csv'), index_col=0)
     categorical_cols = data_args.column_info['cat_cols']
-    numerical_cols = data_args.column_info['num_cols'],
+    numerical_cols = data_args.column_info['num_cols']
     numerical_transformer_method = data_args.numerical_transformer_method
 
     tab_preprocessor = TabPreprocessor(
@@ -84,7 +85,7 @@ def main():
 
     hf_model_text_input = text_token(
         data_df=data_df,
-        text_cos=data_args.column_info['text_cols'],
+        text_cols=data_args.column_info['text_cols'],
         tokenizer=tokenizer,
         sep_text_token_str=tokenizer.sep_token
         if not data_args.column_info['text_col_sep_token'] else
@@ -93,8 +94,8 @@ def main():
         max_token_length=training_args.max_token_length,
     )
 
-    label_col = data_args.column_info['label_col'],
-    label_list = data_args.column_info['label_list'],
+    label_col = data_args.column_info['label_col']
+    label_list = data_args.column_info['label_list']
     labels = data_df[label_col].values
     train_dataset = TorchTabularTextDataset(
         text_encodings=hf_model_text_input,
