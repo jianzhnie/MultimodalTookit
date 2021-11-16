@@ -1,7 +1,7 @@
 '''
 Author: jianzhnie
 Date: 2021-11-12 14:42:32
-LastEditTime: 2021-11-16 12:11:17
+LastEditTime: 2021-11-16 17:54:33
 LastEditors: jianzhnie
 Description:
 
@@ -136,12 +136,14 @@ class TorchTabularTextDataset(Dataset):
 
     def __init__(self,
                  text_encodings,
-                 tab_feats,
+                 tabular_features,
+                 image_features=None,
                  labels=None,
                  label_list=None,
                  class_weights=None):
         self.encodings = text_encodings
-        self.tab_feats = tab_feats
+        self.tabular_features = tabular_features
+        self.image_features = image_features
         self.labels = labels
         self.class_weights = class_weights
         self.label_list = label_list if label_list is not None else [
@@ -149,14 +151,17 @@ class TorchTabularTextDataset(Dataset):
         ]
 
     def __getitem__(self, idx):
-        item = {
+        item = dict()
+        item['deeptext'] = {
             key: torch.tensor(val[idx])
             for key, val in self.encodings.items()
         }
+        item['deeptabular'] = torch.tensor(self.tabular_features[idx]).float() \
+            if self.tabular_features is not None else torch.zeros(0)
+        item['deepimage'] = torch.tensor(self.image_features[idx]).float() \
+            if self.image_features is not None else torch.zeros(0)
         item['labels'] = torch.tensor(
             self.labels[idx]) if self.labels is not None else None
-        item['cat_feats'] = torch.tensor(self.tab_feats[idx]).float() \
-            if self.tab_feats is not None else torch.zeros(0)
         return item
 
     def __len__(self):

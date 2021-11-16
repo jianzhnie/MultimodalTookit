@@ -229,7 +229,7 @@ class WideDeep(nn.Module):
         if self.wide is not None:
             out = self.wide(X['wide'])
         else:
-            batch_size = X[list(X.keys())[0]].size(0)
+            batch_size = X[list(X.keys())[1]].size(0)
             out = torch.zeros(batch_size, self.pred_dim)
 
         return out
@@ -244,8 +244,14 @@ class WideDeep(nn.Module):
         else:
             deepside = torch.FloatTensor()
         if self.deeptext is not None:
-            deepside = torch.cat(
-                [deepside, self.deeptext(X['deeptext'])], axis=1)
+            deepside = torch.cat([
+                deepside,
+                self.deeptext(
+                    input_ids=X['deeptext']['input_ids'],
+                    token_type_ids=X['deeptext']['token_type_ids'],
+                    attention_mask=X['deeptext']['attention_mask'])
+            ],
+                                 axis=1)
         if self.deepimage is not None:
             deepside = torch.cat(
                 [deepside, self.deepimage(X['deepimage'])], axis=1)
@@ -268,7 +274,12 @@ class WideDeep(nn.Module):
             else:
                 wide_out.add_(self.deeptabular(X['deeptabular']))
         if self.deeptext is not None:
-            wide_out.add_(self.deeptext(X['deeptext']))
+            print(self.deeptext)
+            wide_out.add_(
+                self.deeptext(
+                    input_ids=X['deeptext']['input_ids'],
+                    token_type_ids=X['deeptext']['token_type_ids'],
+                    attention_mask=X['deeptext']['attention_mask']))
         if self.deepimage is not None:
             wide_out.add_(self.deepimage(X['deepimage']))
 

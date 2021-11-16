@@ -1,7 +1,39 @@
+'''
+Author: jianzhnie
+Date: 2021-11-15 18:31:40
+LastEditTime: 2021-11-16 14:55:01
+LastEditors: jianzhnie
+Description:
+
+'''
 import math
+from typing import Callable, Dict
 
 import numpy as np
+from scipy.special import softmax
 from sklearn.metrics import auc, confusion_matrix, f1_score, matthews_corrcoef, mean_absolute_error, mean_squared_error, precision_recall_curve, roc_auc_score
+from transformers import EvalPrediction
+
+
+def build_compute_metrics_fn(
+        task_name: str) -> Callable[[EvalPrediction], Dict]:
+
+    def compute_metrics_fn(p: EvalPrediction):
+        if task_name == 'classification':
+            preds_labels = np.argmax(p.predictions, axis=1)
+            if p.predictions.shape[-1] == 2:
+                pred_scores = softmax(p.predictions, axis=1)[:, 1]
+            else:
+                pred_scores = softmax(p.predictions, axis=1)
+            return calc_classification_metrics(pred_scores, preds_labels,
+                                               p.label_ids)
+        elif task_name == 'regression':
+            preds = np.squeeze(p.predictions)
+            return calc_regression_metrics(preds, p.label_ids)
+        else:
+            return {}
+
+    return compute_metrics_fn
 
 
 def calc_classification_metrics(pred_scores, pred_labels, labels):

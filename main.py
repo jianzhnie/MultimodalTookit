@@ -8,16 +8,20 @@ from typing import Callable, Dict
 import numpy as np
 import pandas as pd
 import torch
-from evaluation import calc_classification_metrics, calc_regression_metrics
+import torch.nn as nn
+import tqdm
+from evaluation import build_compute_metrics_fn, calc_classification_metrics, calc_regression_metrics
 from multimodal_exp_args import ModelArguments, MultimodalDataTrainingArguments, OurTrainingArguments
 from multimodal_transformers.data import TabPreprocessor
 from multimodal_transformers.data.multidomal_dataset import TorchTabularTextDataset
-from multimodal_transformers.data.text_encoder import text_token
+from multimodal_transformers.data.text_encoder import get_text_token
+from multimodal_transformers.models import WideDeep
 from multimodal_transformers.models.config import TabularConfig
 from multimodal_transformers.models.tabular import TabMlp
 from multimodal_transformers.models.text import AutoModelWithText
 from multimodal_transformers.utils.util import create_dir_if_not_exists, get_args_info_as_str
 from scipy.special import softmax
+from torch.utils.data import DataLoader, RandomSampler
 from transformers import AutoConfig, AutoTokenizer, EvalPrediction, HfArgumentParser, Trainer, set_seed
 
 os.environ['COMET_MODE'] = 'DISABLED'
@@ -53,16 +57,8 @@ def main():
         format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
         level=logging.INFO
         if training_args.local_rank in [-1, 0] else logging.WARN,
-        datefmt='%m/%d/%Y %H:%M:%S',
+        datefmt='%Y/%m/%d/ %H:%M:%S',
         handlers=[stream_handler, file_handler])
-
-    logger.info(
-        f'======== Model Args ========\n{get_args_info_as_str(model_args)}\n')
-    logger.info(
-        f'======== Data Args ========\n{get_args_info_as_str(data_args)}\n')
-    logger.info(
-        f'======== Training Args ========\n{get_args_info_as_str(training_args)}\n'
-    )
 
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.tokenizer_name
@@ -83,7 +79,7 @@ def main():
 
     X_tab = tab_preprocessor.fit_transform(data_df)
 
-    hf_model_text_input = text_token(
+    hf_model_text_input = get_text_token(
         data_df=data_df,
         text_cols=data_args.column_info['text_cols'],
         tokenizer=tokenizer,
@@ -99,13 +95,12 @@ def main():
     labels = data_df[label_col].values
     train_dataset = TorchTabularTextDataset(
         text_encodings=hf_model_text_input,
-        tab_feats=X_tab,
+        tabular_features=X_tab,
         labels=labels,
         label_list=label_list)
 
-    train_datasets = [train_dataset]
-    val_datasets = [train_dataset]
-    test_datasets = [train_dataset]
+    val_dataset = train_dataset
+    test_dataset = train_dataset
 
     tabmlp = TabMlp(
         mlp_hidden_dims=[8, 4],
@@ -122,25 +117,39 @@ def main():
             np.unique(train_dataset.labels)
         ) if data_args.num_classes == -1 else data_args.num_classes
 
-    def build_compute_metrics_fn(
-            task_name: str) -> Callable[[EvalPrediction], Dict]:
+    logger.info('===== Start training')
+    config = AutoConfig.from_pretrained(
+        model_args.config_name
+        if model_args.config_name else model_args.model_name_or_path,
+        cache_dir=model_args.cache_dir,
+    )
 
-        def compute_metrics_fn(p: EvalPrediction):
-            if task_name == 'classification':
-                preds_labels = np.argmax(p.predictions, axis=1)
-                if p.predictions.shape[-1] == 2:
-                    pred_scores = softmax(p.predictions, axis=1)[:, 1]
-                else:
-                    pred_scores = softmax(p.predictions, axis=1)
-                return calc_classification_metrics(pred_scores, preds_labels,
-                                                   p.label_ids)
-            elif task_name == 'regression':
-                preds = np.squeeze(p.predictions)
-                return calc_regression_metrics(preds, p.label_ids)
-            else:
-                return {}
+    text_model = AutoModelWithText.from_pretrained(
+        model_args.config_name
+        if model_args.config_name else model_args.model_name_or_path,
+        config=config,
+        cache_dir=model_args.cache_dir)
 
-        return compute_metrics_fn
+    multimodal_model = WideDeep(deeptabular=tabmlp, deeptext=text_model)
+
+    train_sampler = RandomSampler(train_dataset)
+    train_dataloader = DataLoader(
+        train_dataset,
+        sampler=train_sampler,
+        batch_size=32,
+        num_workers=4,
+    )
+    print(train_dataloader)
+    for epoch in range(5):
+        train_oss = 0
+        for batch_data in train_dataloader:
+            print(batch_data)
+            image = batch_data['deepimage']
+            text = batch_data['deeptext']
+            tabular = batch_data['deeptabular']
+            label = batch_data['labels']
+            output = multimodal_model(batch_data)
+            print(output)
 
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 '''
 Author: jianzhnie
 Date: 2021-11-12 20:28:07
-LastEditTime: 2021-11-16 14:35:25
+LastEditTime: 2021-11-16 17:41:56
 LastEditors: jianzhnie
 Description:
 
@@ -43,11 +43,12 @@ def get_text_token(data_df,
         tokenizer.convert_ids_to_tokens(hf_model_text_input['input_ids'][0]))
     logger.debug(f'Tokenized text example: {tokenized_text_ex}')
 
-    return hf_model_text_input, data_df
+    return hf_model_text_input
 
 
 if __name__ == '__main__':
     import torch
+    from torch import tensor
     from transformers import AutoConfig, AutoTokenizer
     config = AutoConfig.from_pretrained('bert-base-uncased')
     tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
@@ -77,3 +78,15 @@ if __name__ == '__main__':
     )
     item = {key: torch.tensor(val[0]) for key, val in text_encoder.items()}
     print(item)
+
+    item = {
+        'input_ids':
+        tensor([
+            101, 2307, 2801, 1010, 3532, 7781, 102, 1045, 7078, 3866, 1996,
+            2801, 1997, 2019, 17876, 102
+        ]),
+        'token_type_ids':
+        tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+        'attention_mask':
+        tensor([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+    }

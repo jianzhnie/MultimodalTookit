@@ -1,15 +1,13 @@
 '''
 Author: jianzhnie
 Date: 2021-11-12 15:42:02
-LastEditTime: 2021-11-16 14:16:44
+LastEditTime: 2021-11-16 17:18:06
 LastEditors: jianzhnie
 Description:
 
 '''
 import logging
 import types
-
-from multimodal_transformers.data.preprocessor.category_encoder import CategoricalFeatureEncoder
 
 logger = logging.getLogger(__name__)
 
@@ -36,23 +34,6 @@ def agg_text_columns_func(empty_row_values, replace_text, texts):
             if replace_text is not None:
                 processed_texts.append(replace_text)
     return processed_texts
-
-
-def load_cat_and_num_feats(df, cat_bool_func, num_bool_func, enocde_type=None):
-    cat_feats = load_cat_feats(df, cat_bool_func, enocde_type)
-    num_feats = load_num_feats(df, num_bool_func)
-    return cat_feats, num_feats
-
-
-def load_cat_feats(df, cat_bool_func, encode_type=None):
-    """load categorical features from DataFrame and do encoding if
-    specified."""
-    cat_cols = get_matching_cols(df, cat_bool_func)
-    logger.info(f'{len(cat_cols)} categorical columns')
-    if len(cat_cols) == 0:
-        return None
-    cat_feat_processor = CategoricalFeatureEncoder(df, cat_cols, encode_type)
-    return cat_feat_processor.fit_transform()
 
 
 def get_matching_cols(df, col_match_func):
