@@ -165,10 +165,8 @@ class MultidomalModel(nn.Module):
 
     def forward(self, X: Dict[str, Tensor]):
         wide_out = self._forward_wide(X)
-        if self.deephead:
-            return self._forward_deephead(X, wide_out)
-        else:
-            return self._forward_deep(X, wide_out)
+        out = self._forward_deephead(X, wide_out)
+        return out
 
     def _build_deephead(
         self,
@@ -232,25 +230,6 @@ class MultidomalModel(nn.Module):
             res = (wide_out.add_(deepside_out(deephead_out)), M_loss)
         else:
             res = wide_out.add_(deepside_out(deephead_out))
-
-        return res
-
-    def _forward_deep(self, X, wide_out):
-        if self.deeptabular is not None:
-            if self.is_tabnet:
-                tab_out, M_loss = self.deeptabular(X['deeptabular'])
-                wide_out.add_(tab_out)
-            else:
-                wide_out.add_(self.deeptabular(X['deeptabular']))
-        if self.deeptext is not None:
-            wide_out.add_(self.deeptext(**X['deeptext']))
-        if self.deepimage is not None:
-            wide_out.add_(self.deepimage(X['deepimage']))
-
-        if self.is_tabnet:
-            res = (wide_out, M_loss)
-        else:
-            res = wide_out
 
         return res
 
