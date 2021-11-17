@@ -117,7 +117,7 @@ if __name__ == '__main__':
     df = pd.read_csv(
         '/media/robin/DATA/datatsets/structure_data/titanic/Titanic.csv')
     cols = ['Sex', 'Embarked']
-    cat_feats = CategoricalFeatures(
+    cat_feats = CategoricalFeatureEncoder(
         df, categorical_cols=cols, encoding_type='binary', handle_na=True)
     full_data_transformed = cat_feats.fit_transform()
     print(full_data_transformed)

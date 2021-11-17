@@ -7,9 +7,7 @@ Description:
 
 '''
 
-from .deeptext import BertWithTabular
+from .deeptext import BertTextModel, BertWithTabular
 from .deeptext_auto import AutoModelWithText
-from .deeptext import BertTextModel
-
 
 __all__ = ['BertWithTabular', 'AutoModelWithText', 'BertTextModel']

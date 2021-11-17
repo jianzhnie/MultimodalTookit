@@ -2,9 +2,10 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
-from pytorch_widedeep.preprocessing.base_preprocessor import BasePreprocessor, check_is_fitted
 from pytorch_widedeep.utils.fastai_transforms import Vocab
 from pytorch_widedeep.utils.text_utils import build_embeddings_matrix, get_texts, pad_sequences
+
+from .base_preprocessor import BasePreprocessor, check_is_fitted
 
 
 class TextPreprocessor(BasePreprocessor):

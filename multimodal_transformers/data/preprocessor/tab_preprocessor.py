@@ -2,9 +2,10 @@ from typing import List
 
 import numpy as np
 import pandas as pd
-from pytorch_widedeep.preprocessing.base_preprocessor import BasePreprocessor, check_is_fitted
 from pytorch_widedeep.utils.deeptabular_utils import LabelEncoder
 from sklearn.preprocessing import PowerTransformer, QuantileTransformer, StandardScaler
+
+from .base_preprocessor import BasePreprocessor, check_is_fitted
 
 
 def embed_sz_rule(n_cat):

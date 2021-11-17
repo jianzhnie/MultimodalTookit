@@ -12,8 +12,9 @@ from typing import List
 
 import numpy as np
 import pandas as pd
-from preprocessor.base_preprocessor import BasePreprocessor, check_is_fitted
 from sklearn.preprocessing import PowerTransformer, QuantileTransformer, StandardScaler
+
+from .base_preprocessor import BasePreprocessor, check_is_fitted
 
 logger = logging.getLogger(__name__)
 

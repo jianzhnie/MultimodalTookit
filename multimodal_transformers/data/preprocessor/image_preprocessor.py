@@ -1,9 +1,10 @@
 import cv2
 import numpy as np
 import pandas as pd
-from pytorch_widedeep.preprocessing.base_preprocessor import BasePreprocessor, check_is_fitted
 from pytorch_widedeep.utils.image_utils import AspectAwarePreprocessor, SimplePreprocessor
 from tqdm import tqdm
+
+from .base_preprocessor import BasePreprocessor, check_is_fitted
 
 
 class ImagePreprocessor(BasePreprocessor):

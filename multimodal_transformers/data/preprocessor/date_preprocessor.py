@@ -15,7 +15,8 @@ import numpy as np
 import pandas as pd
 from pandas.tseries import offsets
 from pandas.tseries.frequencies import to_offset
-from preprocessor.base_preprocessor import BasePreprocessor
+
+from .base_preprocessor import BasePreprocessor
 
 logger = logging.getLogger(__name__)
 
