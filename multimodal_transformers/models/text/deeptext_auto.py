@@ -3,10 +3,10 @@ from collections import OrderedDict
 from transformers import AlbertConfig, AutoConfig, BertConfig, DistilBertConfig, RobertaConfig, XLMConfig, XLNetConfig
 from transformers.configuration_utils import PretrainedConfig
 
-from .deeptext import AlbertWithTabular, BertWithTabular, DistilBertWithTabular, RobertaWithTabular, XLMWithTabular, XLNetWithTabular
+from .deeptext import AlbertWithTabular, BertTextModel, DistilBertWithTabular, RobertaWithTabular, XLMWithTabular, XLNetWithTabular
 
 MODEL_FOR_SEQUENCE_W_TABULAR_CLASSIFICATION_MAPPING = OrderedDict([
-    (RobertaConfig, RobertaWithTabular), (BertConfig, BertWithTabular),
+    (RobertaConfig, RobertaWithTabular), (BertConfig, BertTextModel),
     (DistilBertConfig, DistilBertWithTabular),
     (AlbertConfig, AlbertWithTabular), (XLNetConfig, XLNetWithTabular),
     (XLMConfig, XLMWithTabular)
@@ -149,6 +149,7 @@ if __name__ == '__main__':
     config = AutoConfig.from_pretrained(model_name)
     model = AutoModelWithText.from_pretrained('bert-base-uncased')
     print(config)
+    print(model)
     from transformers import pipeline, AutoModelForSequenceClassification
     from transformers import AutoTokenizer
     # PYTORCH CODE

@@ -217,9 +217,10 @@ class MultidomalModel(nn.Module):
                     nn.Linear(self.deeptabular.output_dim, self.pred_dim),
                 )
         if self.deeptext is not None:
-            self.deeptext = nn.Sequential(
-                self.deeptext,
-                nn.Linear(self.deeptext.output_dim, self.pred_dim))
+            self.deeptext = self.deeptext
+            # self.deeptext = nn.Sequential(
+            #     self.deeptext,
+            #     nn.Linear(self.deeptext.output_dim, self.pred_dim))
         if self.deepimage is not None:
             self.deepimage = nn.Sequential(
                 self.deepimage,
@@ -244,14 +245,14 @@ class MultidomalModel(nn.Module):
         else:
             deepside = torch.FloatTensor()
         if self.deeptext is not None:
-            deepside = torch.cat([
-                deepside,
-                self.deeptext(
-                    input_ids=X['deeptext']['input_ids'],
-                    token_type_ids=X['deeptext']['token_type_ids'],
-                    attention_mask=X['deeptext']['attention_mask'])
-            ],
-                                 axis=1)
+            deepside = torch.cat(
+                [
+                    deepside,
+                    self.deeptext(
+                        **X['deeptext']
+                    )
+                ],
+                axis=1)
         if self.deepimage is not None:
             deepside = torch.cat(
                 [deepside, self.deepimage(X['deepimage'])], axis=1)
@@ -274,12 +275,10 @@ class MultidomalModel(nn.Module):
             else:
                 wide_out.add_(self.deeptabular(X['deeptabular']))
         if self.deeptext is not None:
-            print(self.deeptext)
             wide_out.add_(
                 self.deeptext(
-                    input_ids=X['deeptext']['input_ids'],
-                    token_type_ids=X['deeptext']['token_type_ids'],
-                    attention_mask=X['deeptext']['attention_mask']))
+                    **X['deeptext']
+                ))
         if self.deepimage is not None:
             wide_out.add_(self.deepimage(X['deepimage']))
 

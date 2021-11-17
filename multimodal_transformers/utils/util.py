@@ -36,6 +36,7 @@ def get_args_info_as_str(config_flags):
 
 
 def sorted_nicely(l, reverse=False):
+
     def tryint(s):
         try:
             return int(s)

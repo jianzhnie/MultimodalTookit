@@ -1,18 +1,64 @@
 '''
 Author: jianzhnie
 Date: 2021-11-09 14:40:19
-LastEditTime: 2021-11-16 18:48:13
+LastEditTime: 2021-11-17 09:58:02
 LastEditors: jianzhnie
 Description:
 
 '''
 import torch.nn as nn
-from transformers import (AlbertModel,
-                          BertModel,
-                          DistilBertModel,
-                          RobertaForSequenceClassification,
+from transformers import (AlbertModel, BertModel, BertPreTrainedModel,
+                          DistilBertModel, RobertaForSequenceClassification,
                           XLMForSequenceClassification,
                           XLNetForSequenceClassification)
+
+
+class BertTextModel(BertPreTrainedModel):
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.config = config
+
+        self.bert = BertModel(config)
+        classifier_dropout = (
+            config.classifier_dropout if config.classifier_dropout is not None
+            else config.hidden_dropout_prob)
+        self.dropout = nn.Dropout(classifier_dropout)
+        self.output_dim = config.hidden_size
+        self.init_weights()
+
+    def forward(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        head_mask=None,
+        inputs_embeds=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
+    ):
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        outputs = self.bert(
+            input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+
+        pooled_output = outputs[1]
+
+        pooled_output = self.dropout(pooled_output)
+
+        return pooled_output
+
 
 class BertWithTabular(BertModel):
     """Bert Model transformer with a sequence classification/regression head as
@@ -387,14 +433,27 @@ class XLMWithTabular(XLMForSequenceClassification):
 
 if __name__ == '__main__':
     from transformers import BertTokenizer, BertModel
-    import torch
+    from torch import tensor
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
     model = BertModel.from_pretrained('bert-base-uncased')
-
-    inputs = tokenizer("Hello, my dog is cute", return_tensors="pt")
+    inputs = tokenizer('Hello, my dog is cute', return_tensors='pt')
     outputs = model(**inputs)
     print(outputs)
     for key, value in outputs.items():
         print(key, value)
-    last_hidden_states = outputs.last_hidden_state
-    print(last_hidden_states)
+    outputs = dict(
+        last_hidden_state=tensor(
+            [[[-0.1144, 0.1937, 0.1250, ..., -0.3827, 0.2107, 0.5407],
+              [0.5308, 0.3207, 0.3665, ..., -0.0036, 0.7579, 0.0388],
+              [-0.4877, 0.8849, 0.4256, ..., -0.6976, 0.4458, 0.1231], ...,
+              [-0.7003, -0.1815, 0.3297, ..., -0.4838, 0.0680, 0.8901],
+              [-1.0355, -0.2567, -0.0317, ..., 0.3197, 0.3999, 0.1795],
+              [0.6080, 0.2610, -0.3131, ..., 0.0311, -0.6283, -0.1994]]]),
+        pooler_output=tensor([[
+            5.5266e-01, 7.2535e-01, 2.5635e-01, 5.2958e-01, 4.7964e-01,
+            -1.0402e-01, -5.4204e-01, 8.4934e-01
+        ]]),
+        hidden_states=None,
+        past_key_values=None,
+        attentions=None,
+        cross_attentions=None)

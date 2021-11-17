@@ -1,12 +1,12 @@
 '''
 Author: jianzhnie
 Date: 2021-11-08 17:11:49
-LastEditTime: 2021-11-16 15:01:37
+LastEditTime: 2021-11-17 10:03:39
 LastEditors: jianzhnie
 Description:
 
 '''
 
-from .wide_deep import WideDeep
+from .multidomal_model import MultidomalModel
 
-__all__ = ['WideDeep']
+__all__ = ['MultidomalModel']
