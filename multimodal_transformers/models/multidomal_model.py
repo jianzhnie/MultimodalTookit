@@ -118,13 +118,13 @@ class MultidomalModel(nn.Module):
         deeptext: Optional[nn.Module] = None,
         deepimage: Optional[nn.Module] = None,
         deephead: Optional[nn.Module] = None,
-        head_hidden_dims: Optional[List[int]] = None,
+        head_hidden_dims: Optional[List[int]] = [256, 128],
         head_activation: str = 'relu',
         head_dropout: float = 0.1,
         head_batchnorm: bool = False,
         head_batchnorm_last: bool = False,
         head_linear_first: bool = False,
-        pred_dim: int = 1,
+        pred_dim: int = 2,
     ):
         super(MultidomalModel, self).__init__()
 
@@ -154,17 +154,14 @@ class MultidomalModel(nn.Module):
             self.is_tabnet = False
 
         if self.deephead is None:
-            if head_hidden_dims is not None:
-                self._build_deephead(
-                    head_hidden_dims,
-                    head_activation,
-                    head_dropout,
-                    head_batchnorm,
-                    head_batchnorm_last,
-                    head_linear_first,
-                )
-            else:
-                self._add_pred_layer()
+            self._build_deephead(
+                head_hidden_dims,
+                head_activation,
+                head_dropout,
+                head_batchnorm,
+                head_batchnorm_last,
+                head_linear_first,
+            )
 
     def forward(self, X: Dict[str, Tensor]):
         wide_out = self._forward_wide(X)
@@ -203,29 +200,6 @@ class MultidomalModel(nn.Module):
         self.deephead.add_module(
             'head_out', nn.Linear(head_hidden_dims[-1], self.pred_dim))
 
-    def _add_pred_layer(self):
-        if self.deeptabular is not None:
-            if self.is_tabnet:
-                self.deeptabular = nn.Sequential(
-                    self.deeptabular,
-                    TabNetPredLayer(self.deeptabular.output_dim,
-                                    self.pred_dim),
-                )
-            else:
-                self.deeptabular = nn.Sequential(
-                    self.deeptabular,
-                    nn.Linear(self.deeptabular.output_dim, self.pred_dim),
-                )
-        if self.deeptext is not None:
-            self.deeptext = self.deeptext
-            # self.deeptext = nn.Sequential(
-            #     self.deeptext,
-            #     nn.Linear(self.deeptext.output_dim, self.pred_dim))
-        if self.deepimage is not None:
-            self.deepimage = nn.Sequential(
-                self.deepimage,
-                nn.Linear(self.deepimage.output_dim, self.pred_dim))
-
     def _forward_wide(self, X):
         if self.wide is not None:
             out = self.wide(X['wide'])
@@ -246,13 +220,7 @@ class MultidomalModel(nn.Module):
             deepside = torch.FloatTensor()
         if self.deeptext is not None:
             deepside = torch.cat(
-                [
-                    deepside,
-                    self.deeptext(
-                        **X['deeptext']
-                    )
-                ],
-                axis=1)
+                [deepside, self.deeptext(**X['deeptext'])], axis=1)
         if self.deepimage is not None:
             deepside = torch.cat(
                 [deepside, self.deepimage(X['deepimage'])], axis=1)
@@ -275,10 +243,7 @@ class MultidomalModel(nn.Module):
             else:
                 wide_out.add_(self.deeptabular(X['deeptabular']))
         if self.deeptext is not None:
-            wide_out.add_(
-                self.deeptext(
-                    **X['deeptext']
-                ))
+            wide_out.add_(self.deeptext(**X['deeptext']))
         if self.deepimage is not None:
             wide_out.add_(self.deepimage(X['deepimage']))
 
