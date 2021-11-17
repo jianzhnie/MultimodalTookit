@@ -4,18 +4,17 @@ import sys
 from pprint import pformat
 from statistics import mean, stdev
 from typing import Callable, Dict
-
+import transformers
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
-import tqdm
 from evaluation import build_compute_metrics_fn, calc_classification_metrics, calc_regression_metrics
 from multimodal_exp_args import ModelArguments, MultimodalDataTrainingArguments, OurTrainingArguments
 from multimodal_transformers.data import TabPreprocessor
 from multimodal_transformers.data.multidomal_dataset import TorchTabularTextDataset
 from multimodal_transformers.data.text_encoder import get_text_token
-from multimodal_transformers.models import WideDeep
+from multimodal_transformers.models import MultidomalModel
 from multimodal_transformers.models.config import TabularConfig
 from multimodal_transformers.models.tabular import TabMlp
 from multimodal_transformers.models.text import AutoModelWithText
@@ -23,10 +22,9 @@ from multimodal_transformers.utils.util import create_dir_if_not_exists, get_arg
 from scipy.special import softmax
 from torch.utils.data import DataLoader, RandomSampler
 from transformers import AutoConfig, AutoTokenizer, EvalPrediction, HfArgumentParser, Trainer, set_seed
+from transformers import default_data_collator, get_scheduler, DataCollatorWithPadding,
 
-os.environ['COMET_MODE'] = 'DISABLED'
 logger = logging.getLogger(__name__)
-
 
 def main():
     parser = HfArgumentParser((ModelArguments, MultimodalDataTrainingArguments,
@@ -60,6 +58,10 @@ def main():
         datefmt='%Y/%m/%d/ %H:%M:%S',
         handlers=[stream_handler, file_handler])
 
+    # Load pretrained model and tokenizer
+    #
+    # In distributed training, the .from_pretrained methods guarantee that only one local process can concurrently
+    # download model & vocab.
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.tokenizer_name
         if model_args.tokenizer_name else model_args.model_name_or_path,
@@ -130,14 +132,29 @@ def main():
         config=config,
         cache_dir=model_args.cache_dir)
 
-    multimodal_model = WideDeep(deeptabular=tabmlp, deeptext=text_model)
+    multimodal_model = MultidomalModel(
+        deeptabular=tabmlp,
+        deeptext=text_model,
+        head_hidden_dims=[128, 64],
+        pred_dim=num_labels)
+
+    # DataLoaders creation:
+    if args.pad_to_max_length:
+        # If padding was already done ot max length, we use the default data collator that will just convert everything
+        # to tensors.
+        data_collator = default_data_collator
+    else:
+        # Otherwise, `DataCollatorWithPadding` will apply dynamic padding for us (by padding to the maximum length of
+        # the samples passed). When using mixed precision, we add `pad_to_multiple_of=8` to pad all tensors to multiple
+        # of 8s, which will enable the use of Tensor Cores on NVIDIA hardware with compute capability >= 7.5 (Volta).
+        data_collator = DataCollatorWithPadding(tokenizer, pad_to_multiple_of=(8 if accelerator.use_fp16 else None))
 
     train_sampler = RandomSampler(train_dataset)
     train_dataloader = DataLoader(
         train_dataset,
         sampler=train_sampler,
-        batch_size=32,
-        num_workers=4,
+        batch_size=16,
+        num_workers=0,
     )
     print(train_dataloader)
     for epoch in range(5):

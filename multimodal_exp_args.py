@@ -210,7 +210,13 @@ class OurTrainingArguments(TrainingArguments):
             'Number of updates steps to accumulate before performing a backward/update pass.'
         },
     )
-
+    # log_level: str = field(
+    #     default="info",
+    #     metadata={
+    #         "help":
+    #         "Logger log level to use on the main node. Possible choices are the log levels as strings: 'debug', 'info', 'warning', 'error' and 'critical', plus a 'passive' level which doesn't set anything and lets the application set the level. Defaults to 'passive'.",
+    #     },
+    # )
     learning_rate: float = field(
         default=5e-5, metadata={'help': 'The initial learning rate for Adam.'})
 
