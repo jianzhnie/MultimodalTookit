@@ -1,30 +1,24 @@
 import logging
 import os
 import sys
-from pprint import pformat
-from statistics import mean, stdev
-from typing import Callable, Dict
-import transformers
+
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
-from evaluation import build_compute_metrics_fn, calc_classification_metrics, calc_regression_metrics
 from multimodal_exp_args import ModelArguments, MultimodalDataTrainingArguments, OurTrainingArguments
 from multimodal_transformers.data import TabPreprocessor
 from multimodal_transformers.data.multidomal_dataset import TorchTabularTextDataset
 from multimodal_transformers.data.text_encoder import get_text_token
 from multimodal_transformers.models import MultidomalModel
-from multimodal_transformers.models.config import TabularConfig
 from multimodal_transformers.models.tabular import TabMlp
 from multimodal_transformers.models.text import AutoModelWithText
-from multimodal_transformers.utils.util import create_dir_if_not_exists, get_args_info_as_str
-from scipy.special import softmax
+from multimodal_transformers.utils.util import create_dir_if_not_exists
 from torch.utils.data import DataLoader, RandomSampler
-from transformers import AutoConfig, AutoTokenizer, EvalPrediction, HfArgumentParser, Trainer, set_seed
-from transformers import default_data_collator, get_scheduler, DataCollatorWithPadding,
+from transformers import AdamW, AutoConfig, AutoTokenizer, HfArgumentParser, default_data_collator, get_scheduler, set_seed
 
 logger = logging.getLogger(__name__)
+
 
 def main():
     parser = HfArgumentParser((ModelArguments, MultimodalDataTrainingArguments,
@@ -139,34 +133,97 @@ def main():
         pred_dim=num_labels)
 
     # DataLoaders creation:
-    if args.pad_to_max_length:
-        # If padding was already done ot max length, we use the default data collator that will just convert everything
-        # to tensors.
-        data_collator = default_data_collator
-    else:
-        # Otherwise, `DataCollatorWithPadding` will apply dynamic padding for us (by padding to the maximum length of
-        # the samples passed). When using mixed precision, we add `pad_to_multiple_of=8` to pad all tensors to multiple
-        # of 8s, which will enable the use of Tensor Cores on NVIDIA hardware with compute capability >= 7.5 (Volta).
-        data_collator = DataCollatorWithPadding(tokenizer, pad_to_multiple_of=(8 if accelerator.use_fp16 else None))
-
+    data_collator = default_data_collator
     train_sampler = RandomSampler(train_dataset)
     train_dataloader = DataLoader(
         train_dataset,
         sampler=train_sampler,
+        collate_fn=data_collator,
         batch_size=16,
+        shuffle=True,
         num_workers=0,
     )
-    print(train_dataloader)
-    for epoch in range(5):
-        train_oss = 0
-        for batch_data in train_dataloader:
-            print(batch_data)
-            image = batch_data['deepimage']
-            text = batch_data['deeptext']
-            tabular = batch_data['deeptabular']
-            label = batch_data['labels']
-            output = multimodal_model(batch_data)
-            print(output)
+    val_dataloader = DataLoader(
+        val_dataset, collate_fn=data_collator, batch_size=16)
+
+    # Optimizer
+    # Split weights in two groups, one with weight decay and the other not.
+    no_decay = ['bias', 'LayerNorm.weight']
+    optimizer_grouped_parameters = [
+        {
+            'params': [
+                p for n, p in multimodal_model.named_parameters()
+                if not any(nd in n for nd in no_decay)
+            ],
+            'weight_decay':
+            training_args.weight_decay,
+        },
+        {
+            'params': [
+                p for n, p in multimodal_model.named_parameters()
+                if any(nd in n for nd in no_decay)
+            ],
+            'weight_decay':
+            0.0,
+        },
+    ]
+    optimizer = AdamW(
+        optimizer_grouped_parameters, lr=training_args.learning_rate)
+
+    lr_scheduler = get_scheduler(
+        name=training_args.lr_scheduler_type,
+        optimizer=optimizer,
+        num_warmup_steps=training_args.num_warmup_steps,
+        num_training_steps=training_args.max_train_steps,
+    )
+    criterion = nn.CrossEntropyLoss()
+
+    # Only show the progress bar once on each machine.
+    for epoch in range(training_args.num_train_epochs):
+        train(
+            train_loader=train_dataloader,
+            model=multimodal_model,
+            criterion=criterion,
+            optimizer=optimizer,
+            lr_scheduler=lr_scheduler)
+
+        validation(
+            val_loader=val_dataloader,
+            model=multimodal_model,
+            criterion=criterion)
+
+
+def train(train_loader, model, criterion, optimizer, lr_scheduler):
+    # switch to train mode
+    train_loss = 0
+    model.train()
+    for i, batch in enumerate(train_loader):
+        target = batch['label']
+        # compute output
+        output = model(**batch)
+        loss = criterion(output, target)
+        train_loss += loss.item()
+        # measure accuracy and record loss
+        # compute gradient and do SGD step
+        optimizer.zero_grad()
+        loss.backward()
+        lr_scheduler.step()
+        optimizer.step()
+    return train_loss
+
+
+def validation(val_loader, model, criterion):
+    # switch to evaluate mode
+    model.eval()
+    epoch_loss = 0
+    with torch.no_grad():
+        for i, batch in enumerate(val_loader):
+            target = batch['label']
+            # compute output
+            output = model(**batch)
+            loss = criterion(output, target)
+            epoch_loss += loss.item()
+    return epoch_loss
 
 
 if __name__ == '__main__':
