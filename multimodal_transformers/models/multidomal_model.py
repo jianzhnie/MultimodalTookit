@@ -11,11 +11,8 @@ from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
-from pytorch_widedeep.models.tab_mlp import MLP
-from pytorch_widedeep.models.tabnet.tab_net import TabNetPredLayer
+from multimodal_transformers.models.tabular import TabMlp
 from torch import Tensor
-
-warnings.filterwarnings('default', category=UserWarning)
 
 
 class MultidomalModel(nn.Module):
