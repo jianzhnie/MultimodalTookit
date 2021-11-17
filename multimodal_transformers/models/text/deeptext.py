@@ -147,7 +147,7 @@ class RobertaWithTabular(RobertaForSequenceClassification):
         return text_feats
 
 
-class DistilBertWithTabular(DistilBertForSequenceClassification):
+class DistilBertWithTabular(DistilBertModel):
     """DistilBert Model transformer with a sequence classification/regression
     head as well as a TabularFeatCombiner module to combine categorical and
     numerical features with the Roberta pooled output.
@@ -210,7 +210,7 @@ class DistilBertWithTabular(DistilBertForSequenceClassification):
         return text_feats
 
 
-class AlbertWithTabular(AlbertForSequenceClassification):
+class AlbertWithTabular(AlbertModel):
     """ALBERT Model transformer with a sequence classification/regression head
     as well as a TabularFeatCombiner module to combine categorical and
     numerical features with the Roberta pooled output.
@@ -383,3 +383,18 @@ class XLMWithTabular(XLMForSequenceClassification):
         output = transformer_outputs[0]
         output = self.sequence_summary(output)
         return output
+
+
+if __name__ == '__main__':
+    from transformers import BertTokenizer, BertModel
+    import torch
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+    model = BertModel.from_pretrained('bert-base-uncased')
+
+    inputs = tokenizer("Hello, my dog is cute", return_tensors="pt")
+    outputs = model(**inputs)
+    print(outputs)
+    for key, value in outputs.items():
+        print(key, value)
+    last_hidden_states = outputs.last_hidden_state
+    print(last_hidden_states)
