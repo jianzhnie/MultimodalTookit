@@ -11,7 +11,7 @@ from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
-from multimodal_transformers.models.tabular import TabMlp
+from multimodal_transformers.models.tabular.tab_mlp import MLP
 from torch import Tensor
 
 
