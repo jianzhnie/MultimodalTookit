@@ -138,13 +138,11 @@ def main():
     train_dataloader = DataLoader(
         train_dataset,
         sampler=train_sampler,
-        collate_fn=data_collator,
         batch_size=16,
-        shuffle=True,
-        num_workers=0,
+        num_workers=2,
     )
     val_dataloader = DataLoader(
-        val_dataset, collate_fn=data_collator, batch_size=16)
+        val_dataset, batch_size=16)
 
     # Optimizer
     # Split weights in two groups, one with weight decay and the other not.
@@ -173,13 +171,13 @@ def main():
     lr_scheduler = get_scheduler(
         name=training_args.lr_scheduler_type,
         optimizer=optimizer,
-        num_warmup_steps=training_args.num_warmup_steps,
-        num_training_steps=training_args.max_train_steps,
+        num_warmup_steps=50,
+        num_training_steps=10000,
     )
     criterion = nn.CrossEntropyLoss()
 
     # Only show the progress bar once on each machine.
-    for epoch in range(training_args.num_train_epochs):
+    for epoch in range(10):
         train(
             train_loader=train_dataloader,
             model=multimodal_model,
@@ -198,17 +196,18 @@ def train(train_loader, model, criterion, optimizer, lr_scheduler):
     train_loss = 0
     model.train()
     for i, batch in enumerate(train_loader):
-        target = batch['label']
+        target = batch['labels']
         # compute output
-        output = model(**batch)
+        output = model(batch)
         loss = criterion(output, target)
+        print(loss)
         train_loss += loss.item()
         # measure accuracy and record loss
         # compute gradient and do SGD step
         optimizer.zero_grad()
         loss.backward()
-        lr_scheduler.step()
         optimizer.step()
+        lr_scheduler.step()
     return train_loss
 
 
@@ -218,10 +217,11 @@ def validation(val_loader, model, criterion):
     epoch_loss = 0
     with torch.no_grad():
         for i, batch in enumerate(val_loader):
-            target = batch['label']
+            target = batch['labels']
             # compute output
             output = model(**batch)
             loss = criterion(output, target)
+            print(loss)
             epoch_loss += loss.item()
     return epoch_loss
 
