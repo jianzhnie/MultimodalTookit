@@ -11,8 +11,13 @@ from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
+import sys
+sys.path.append("../../")
 from multimodal_transformers.models.tabular.tab_mlp import MLP
 from torch import Tensor
+
+use_cuda = torch.cuda.is_available()
+device = torch.device("cuda" if use_cuda else "cpu")
 
 
 class MultidomalModel(nn.Module):
@@ -151,7 +156,7 @@ class MultidomalModel(nn.Module):
             self.is_tabnet = False
 
         if self.deephead is None:
-            self._build_deephead(
+            self.deephead = self._build_deephead(
                 head_hidden_dims,
                 head_activation,
                 head_dropout,
@@ -183,7 +188,7 @@ class MultidomalModel(nn.Module):
             deep_dim += self.deepimage.output_dim
 
         head_hidden_dims = [deep_dim] + head_hidden_dims
-        self.deephead = MLP(
+        deephead = MLP(
             head_hidden_dims,
             head_activation,
             head_dropout,
@@ -192,15 +197,16 @@ class MultidomalModel(nn.Module):
             head_linear_first,
         )
 
-        self.deephead.add_module(
-            'head_out', nn.Linear(head_hidden_dims[-1], self.pred_dim))
+        deephead.add_module('head_out',
+                            nn.Linear(head_hidden_dims[-1], self.pred_dim))
+        return deephead
 
     def _forward_wide(self, X):
         if self.wide is not None:
             out = self.wide(X['wide'])
         else:
             batch_size = X[list(X.keys())[1]].size(0)
-            out = torch.zeros(batch_size, self.pred_dim)
+            out = torch.zeros(batch_size, self.pred_dim).to(device)
 
         return out
 
@@ -221,7 +227,8 @@ class MultidomalModel(nn.Module):
                 [deepside, self.deepimage(X['deepimage'])], axis=1)
 
         deephead_out = self.deephead(deepside)
-        deepside_out = nn.Linear(deephead_out.size(1), self.pred_dim)
+        deepside_out = nn.Linear(deephead_out.size(1),
+                                 self.pred_dim).to(device)
 
         if self.is_tabnet:
             res = (wide_out.add_(deepside_out(deephead_out)), M_loss)
