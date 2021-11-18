@@ -1,7 +1,7 @@
 import logging
 import os
 import sys
-
+from typing import Callable, Dict
 import numpy as np
 import pandas as pd
 import torch
@@ -14,10 +14,15 @@ from multimodal_transformers.models import MultidomalModel
 from multimodal_transformers.models.tabular import TabMlp
 from multimodal_transformers.models.text import AutoModelWithText
 from multimodal_transformers.utils.util import create_dir_if_not_exists
+from multimodal_transformers import MMTrainer
 from torch.utils.data import DataLoader, RandomSampler
 from transformers import AdamW, AutoConfig, AutoTokenizer, HfArgumentParser, default_data_collator, get_scheduler, set_seed
+from transformers import Trainer, EvalPrediction
+from evaluation import calc_regression_metrics, calc_classification_metrics
+from scipy.special import softmax
 
 logger = logging.getLogger(__name__)
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def main():
@@ -132,6 +137,39 @@ def main():
         head_hidden_dims=[128, 64],
         pred_dim=num_labels)
 
+    # def build_compute_metrics_fn(
+    #         task_name: str) -> Callable[[EvalPrediction], Dict]:
+
+    #     def compute_metrics_fn(p: EvalPrediction):
+    #         if task_name == "classification":
+    #             preds_labels = np.argmax(p.predictions, axis=1)
+    #             if p.predictions.shape[-1] == 2:
+    #                 pred_scores = softmax(p.predictions, axis=1)[:, 1]
+    #             else:
+    #                 pred_scores = softmax(p.predictions, axis=1)
+    #             return calc_classification_metrics(pred_scores, preds_labels,
+    #                                                p.label_ids)
+    #         elif task_name == "regression":
+    #             preds = np.squeeze(p.predictions)
+    #             return calc_regression_metrics(preds, p.label_ids)
+    #         else:
+    #             return {}
+
+    #     return compute_metrics_fn
+
+    # trainer = MMTrainer(
+    #     model=multimodal_model,
+    #     args=training_args,
+    #     train_dataset=train_dataset,
+    #     eval_dataset=val_dataset,
+    #     compute_metrics=build_compute_metrics_fn(task),
+    # )
+    # if training_args.do_train:
+    #     trainer.train(
+    #         model_path=model_args.model_name_or_path if os.path.
+    #         isdir(model_args.model_name_or_path) else None)
+    #     trainer.save_model()
+
     # DataLoaders creation:
     data_collator = default_data_collator
     train_sampler = RandomSampler(train_dataset)
@@ -141,8 +179,7 @@ def main():
         batch_size=16,
         num_workers=2,
     )
-    val_dataloader = DataLoader(
-        val_dataset, batch_size=16)
+    val_dataloader = DataLoader(val_dataset, batch_size=16)
 
     # Optimizer
     # Split weights in two groups, one with weight decay and the other not.
@@ -175,6 +212,7 @@ def main():
         num_training_steps=10000,
     )
     criterion = nn.CrossEntropyLoss()
+    multimodal_model.to(device)
 
     # Only show the progress bar once on each machine.
     for epoch in range(10):
@@ -200,7 +238,6 @@ def train(train_loader, model, criterion, optimizer, lr_scheduler):
         # compute output
         output = model(batch)
         loss = criterion(output, target)
-        print(loss)
         train_loss += loss.item()
         # measure accuracy and record loss
         # compute gradient and do SGD step
@@ -209,6 +246,96 @@ def train(train_loader, model, criterion, optimizer, lr_scheduler):
         optimizer.step()
         lr_scheduler.step()
     return train_loss
+
+
+
+def train(train_loader,
+          model,
+          criterion,
+          optimizer,
+          scaler,
+          lr_scheduler,
+          num_class,
+          logger,
+          epoch,
+          timeout_handler,
+          ema=None,
+          use_amp=False,
+          batch_size_multiplier=1,
+          log_interval=1):
+    batch_time_m = AverageMeter('Time', ':6.3f')
+    data_time_m = AverageMeter('Data', ':6.3f')
+    losses_m = AverageMeter('Loss', ':.4e')
+    top1_m = AverageMeter('Acc@1', ':6.2f')
+    top5_m = AverageMeter('Acc@5', ':6.2f')
+
+    interrupted = False
+    step = get_train_step(model,
+                          criterion,
+                          optimizer,
+                          scaler=scaler,
+                          use_amp=use_amp,
+                          batch_size_multiplier=batch_size_multiplier,
+                          top_k=num_class)
+
+    model.train()
+    optimizer.zero_grad()
+    steps_per_epoch = len(train_loader)
+    data_iter = enumerate(train_loader)
+    end = time.time()
+    batch_size = 1
+    for i, (input, target) in data_iter:
+        input = input.cuda()
+        target = target.cuda()
+
+        bs = input.size(0)
+        lr_scheduler.step(epoch)
+        data_time = time.time() - end
+
+        optimizer_step = ((i + 1) % batch_size_multiplier) == 0
+        loss, prec1, prec5 = step(input, target, optimizer_step=optimizer_step)
+        if ema is not None:
+            ema(model, epoch * steps_per_epoch + i)
+
+        it_time = time.time() - end
+        batch_time_m.update(it_time)
+        data_time_m.update(data_time)
+        losses_m.update(loss.item(), bs)
+        top1_m.update(prec1.item(), bs)
+        top5_m.update(prec5.item(), bs)
+
+        end = time.time()
+        if ((i + 1) % 20 == 0) and timeout_handler.interrupted:
+            time.sleep(5)
+            interrupted = True
+            break
+        if i == 1:
+            batch_size = bs
+        if (i % log_interval == 0) or (i == steps_per_epoch - 1):
+            if not torch.distributed.is_initialized(
+            ) or torch.distributed.get_rank() == 0:
+                learning_rate = optimizer.param_groups[0]["lr"]
+                log_name = 'Train-log'
+                logger.info(
+                    "{0}: [epoch:{1:>2d}] [{2:>2d}/{3}] "
+                    'DataTime: {data_time.val:.3f} ({data_time.avg:.3f}) '
+                    'BatchTime: {batch_time.val:.3f} ({batch_time.avg:.3f}) '
+                    'Loss: {loss.val:>7.4f} ({loss.avg:>6.4f}) '
+                    'Acc@1: {top1.val:>7.4f} ({top1.avg:>7.4f}) '
+                    'Acc@5: {top5.val:>7.4f} ({top5.avg:>7.4f}) '
+                    'lr: {lr:>4.6f} '.format(log_name,
+                                             epoch + 1,
+                                             i,
+                                             steps_per_epoch,
+                                             data_time=data_time_m,
+                                             batch_time=batch_time_m,
+                                             loss=losses_m,
+                                             top1=top1_m,
+                                             top5=top5_m,
+                                             lr=learning_rate))
+
+    return interrupted, losses_m.avg, top1_m.avg / 100.0, top5_m.avg / 100.0, batch_size
+
 
 
 def validation(val_loader, model, criterion):
