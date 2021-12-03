@@ -3,11 +3,10 @@ Author: jianzhnie
 Date: 2021-11-18 16:28:01
 LastEditTime: 2021-11-18 16:54:27
 LastEditors: jianzhnie
-Description: 
+Description:
 
 '''
-from transformers import Trainer
-from transformers import logging
+from transformers import Trainer, logging
 
 
 class MMTrainer(Trainer):

@@ -1,3 +1,11 @@
+'''
+Author: jianzhnie
+Date: 2021-11-17 09:29:59
+LastEditTime: 2021-12-03 17:38:24
+LastEditors: jianzhnie
+Description:
+
+'''
 import re
 from os import makedirs
 from os.path import abspath, dirname, exists, join
@@ -35,20 +43,18 @@ def get_args_info_as_str(config_flags):
     return '\n'.join(rtn)
 
 
-def sorted_nicely(l, reverse=False):
+def sorted_nicely(sort_keys, reverse=False):
 
     def tryint(s):
-        try:
-            return int(s)
-        except:
-            return s
+        return int(s)
 
     def alphanum_key(s):
         if type(s) is not str:
-            raise ValueError('{} must be a string in l: {}'.format(s, l))
+            raise ValueError('{} must be a string in l: {}'.format(
+                s, sort_keys))
         return [tryint(c) for c in re.split('([0-9]+)', s)]
 
-    rtn = sorted(l, key=alphanum_key)
+    rtn = sorted(sort_keys, key=alphanum_key)
     if reverse:
         rtn = reversed(rtn)
     return rtn

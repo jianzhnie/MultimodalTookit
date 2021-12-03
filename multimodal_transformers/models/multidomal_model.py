@@ -6,18 +6,19 @@ nn.Module the oppossite is, of course, not true. This does not affect any funcio
 fixing is simple (simply define new attributes that are the nn.Sequential objects), its implications are quite wide within the package (involves changing a
 number of tests and tutorials). Therefore, I will introduce that fix when I do a major release. For now, we live with it.
 """
+import sys
 import warnings
 from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
-import sys
-sys.path.append("../../")
 from multimodal_transformers.models.tabular.tab_mlp import MLP
 from torch import Tensor
 
+sys.path.append('../../')
+
 use_cuda = torch.cuda.is_available()
-device = torch.device("cuda" if use_cuda else "cpu")
+device = torch.device('cuda' if use_cuda else 'cpu')
 
 
 class MultidomalModel(nn.Module):

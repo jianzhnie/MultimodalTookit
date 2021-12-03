@@ -1,8 +1,17 @@
+'''
+Author: jianzhnie
+Date: 2021-11-18 18:22:32
+LastEditTime: 2021-12-03 15:54:40
+LastEditors: jianzhnie
+Description:
+
+'''
 import torch
 
 
 class AverageMeter(object):
-    """Computes and stores the average and current value"""
+    """Computes and stores the average and current value."""
+
     def __init__(self, name, fmt=':f'):
         self.name = name
         self.fmt = fmt
@@ -26,7 +35,8 @@ class AverageMeter(object):
 
 
 class ProgressMeter(object):
-    def __init__(self, num_batches, meters, prefix=""):
+
+    def __init__(self, num_batches, meters, prefix=''):
         self.batch_fmtstr = self._get_batch_fmtstr(num_batches)
         self.meters = meters
         self.prefix = prefix
@@ -43,7 +53,8 @@ class ProgressMeter(object):
 
 
 def accuracy(output, target, topk=(1, )):
-    """Computes the accuracy over the k top predictions for the specified values of k"""
+    """Computes the accuracy over the k top predictions for the specified
+    values of k."""
     with torch.no_grad():
         maxk = max(topk)
         batch_size = target.size(0)

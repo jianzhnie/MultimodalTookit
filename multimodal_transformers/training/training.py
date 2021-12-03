@@ -1,13 +1,10 @@
 import time
+
 import torch
-from torch.functional import Tensor
-import torch.nn as nn
-from torch.autograd import Variable
-from torch.nn.parallel import DistributedDataParallel as DDP
-from torch.cuda.amp import autocast
+from multimodal_transformers.utils.metrics import AverageMeter, accuracy
 from multimodal_transformers.utils.model import reduce_tensor, save_checkpoint
 from multimodal_transformers.utils.time_handler import TimeoutHandler
-from multimodal_transformers.utils.metrics import AverageMeter, accuracy
+from torch.cuda.amp import autocast
 
 
 def get_train_step(model,
@@ -19,12 +16,9 @@ def get_train_step(model,
                    top_k=1):
 
     def _step(input, target, optimizer_step=True):
-        input_var = Variable(input)
-        target_var = Variable(target)
-
         with autocast(enabled=use_amp):
-            output = model(input_var)
-            loss = criterion(output, target_var)
+            output = model(input)
+            loss = criterion(output, target)
 
             loss /= batch_size_multiplier
             prec1, prec5 = accuracy(
@@ -86,19 +80,12 @@ def train(train_loader,
     end = time.time()
     batch_size = 1
     for i, batch in data_iter:
-        for key, value in batch.items():
-            if isinstance(value, Tensor):
-                batch[value].cuda()
-            elif isinstance(value, dict):
-                for sub_key in value[sub_key].items():
-                    batch[key][sub_key].cuda()
-
-        target = batch['labels'].cuda()
-        bs = input.size(0)
+        target = batch['labels']
+        bs = target.size(0)
         lr_scheduler.step(epoch)
         data_time = time.time() - end
         optimizer_step = ((i + 1) % batch_size_multiplier) == 0
-        loss, prec1, prec5 = step(input, target, optimizer_step=optimizer_step)
+        loss, prec1, prec5 = step(batch, target, optimizer_step=optimizer_step)
         it_time = time.time() - end
         batch_time_m.update(it_time)
         data_time_m.update(data_time)
@@ -116,10 +103,10 @@ def train(train_loader,
         if (i % log_interval == 0) or (i == steps_per_epoch - 1):
             if not torch.distributed.is_initialized(
             ) or torch.distributed.get_rank() == 0:
-                learning_rate = optimizer.param_groups[0]["lr"]
+                learning_rate = optimizer.param_groups[0]['lr']
                 log_name = 'Train-log'
                 logger.info(
-                    "{0}: [epoch:{1:>2d}] [{2:>2d}/{3}] "
+                    '{0}: [epoch:{1:>2d}] [{2:>2d}/{3}] '
                     'DataTime: {data_time.val:.3f} ({data_time.avg:.3f}) '
                     'BatchTime: {batch_time.val:.3f} ({batch_time.avg:.3f}) '
                     'Loss: {loss.val:>7.4f} ({loss.avg:>6.4f}) '
@@ -143,12 +130,9 @@ def train(train_loader,
 def get_val_step(model, criterion, use_amp=False, top_k=1):
 
     def _step(input, target):
-        input_var = Variable(input)
-        target_var = Variable(target)
-
         with torch.no_grad(), autocast(enabled=use_amp):
-            output = model(input_var)
-            loss = criterion(output, target_var)
+            output = model(input)
+            loss = criterion(output, target)
 
             prec1, prec5 = accuracy(
                 output.data, target, topk=(1, min(5, top_k)))
@@ -188,10 +172,8 @@ def validate(val_loader,
     end = time.time()
     data_iter = enumerate(val_loader)
     batch_size = 1
-    for i, (input, target) in data_iter:
-        input = input.cuda()
-        target = target.cuda()
-
+    for i, batch in data_iter:
+        target = batch['labels']
         bs = input.size(0)
         data_time = time.time() - end
         loss, prec1, prec5 = step(input, target)
@@ -249,8 +231,8 @@ def train_loop(
     skip_training=False,
     skip_validation=False,
     save_checkpoints=True,
-    checkpoint_dir="./",
-    checkpoint_filename="checkpoint.pth.tar",
+    checkpoint_dir='./',
+    checkpoint_filename='checkpoint.pth.tar',
 ):
     prec1 = -1
     use_ema = (model_ema is not None) and (ema is not None)
@@ -258,7 +240,7 @@ def train_loop(
     if early_stopping_patience > 0:
         epochs_since_improvement = 0
 
-    print(f"RUNNING EPOCHS FROM {start_epoch} TO {end_epoch}")
+    print(f'RUNNING EPOCHS FROM {start_epoch} TO {end_epoch}')
     with TimeoutHandler() as timeout_handler:
         interrupted = False
         for epoch in range(start_epoch, end_epoch):
@@ -297,7 +279,7 @@ def train_loop(
                     criterion,
                     num_class,
                     logger,
-                    "Val-log",
+                    'Val-log',
                     use_amp=use_amp,
                 )
                 steps_per_epoch = len(val_loader)
@@ -316,7 +298,7 @@ def train_loop(
                         for k, v in ema.state_dict().items()
                     })
                     prec1 = validate(val_loader, criterion, model_ema,
-                                     num_class, logger, "Val-log")
+                                     num_class, logger, 'Val-log')
 
                 if prec1 > best_prec1:
                     is_best = True
@@ -330,13 +312,13 @@ def train_loop(
             if save_checkpoints and (not torch.distributed.is_initialized()
                                      or torch.distributed.get_rank() == 0):
                 checkpoint_state = {
-                    "epoch": epoch + 1,
-                    "state_dict": model.state_dict(),
-                    "best_prec1": best_prec1,
-                    "optimizer": optimizer.state_dict(),
+                    'epoch': epoch + 1,
+                    'state_dict': model.state_dict(),
+                    'best_prec1': best_prec1,
+                    'optimizer': optimizer.state_dict(),
                 }
                 if use_ema:
-                    checkpoint_state["state_dict_ema"] = ema.state_dict()
+                    checkpoint_state['state_dict_ema'] = ema.state_dict()
 
                 save_checkpoint(
                     checkpoint_state,
