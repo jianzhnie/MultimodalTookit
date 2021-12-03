@@ -2,24 +2,25 @@ import logging
 import os
 import sys
 from typing import Callable, Dict
+
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
+from evaluation import calc_classification_metrics, calc_regression_metrics
 from multimodal_exp_args import ModelArguments, MultimodalDataTrainingArguments, OurTrainingArguments
+from multimodal_transformers import MMTrainer
 from multimodal_transformers.data import TabPreprocessor
 from multimodal_transformers.data.multidomal_dataset import TorchTabularTextDataset
 from multimodal_transformers.data.text_encoder import get_text_token
 from multimodal_transformers.models import MultidomalModel
 from multimodal_transformers.models.tabular import TabMlp
 from multimodal_transformers.models.text import AutoModelWithText
+from multimodal_transformers.training.training import train_loop
 from multimodal_transformers.utils.util import create_dir_if_not_exists
-from multimodal_transformers import MMTrainer
-from torch.utils.data import DataLoader, RandomSampler
-from transformers import AdamW, AutoConfig, AutoTokenizer, HfArgumentParser, default_data_collator, get_scheduler, set_seed
-from transformers import Trainer, EvalPrediction
-from evaluation import calc_regression_metrics, calc_classification_metrics
 from scipy.special import softmax
+from torch.utils.data import DataLoader, RandomSampler
+from transformers import AdamW, AutoConfig, AutoTokenizer, EvalPrediction, HfArgumentParser, Trainer, default_data_collator, get_scheduler, set_seed
 
 logger = logging.getLogger(__name__)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -246,96 +247,6 @@ def train(train_loader, model, criterion, optimizer, lr_scheduler):
         optimizer.step()
         lr_scheduler.step()
     return train_loss
-
-
-
-def train(train_loader,
-          model,
-          criterion,
-          optimizer,
-          scaler,
-          lr_scheduler,
-          num_class,
-          logger,
-          epoch,
-          timeout_handler,
-          ema=None,
-          use_amp=False,
-          batch_size_multiplier=1,
-          log_interval=1):
-    batch_time_m = AverageMeter('Time', ':6.3f')
-    data_time_m = AverageMeter('Data', ':6.3f')
-    losses_m = AverageMeter('Loss', ':.4e')
-    top1_m = AverageMeter('Acc@1', ':6.2f')
-    top5_m = AverageMeter('Acc@5', ':6.2f')
-
-    interrupted = False
-    step = get_train_step(model,
-                          criterion,
-                          optimizer,
-                          scaler=scaler,
-                          use_amp=use_amp,
-                          batch_size_multiplier=batch_size_multiplier,
-                          top_k=num_class)
-
-    model.train()
-    optimizer.zero_grad()
-    steps_per_epoch = len(train_loader)
-    data_iter = enumerate(train_loader)
-    end = time.time()
-    batch_size = 1
-    for i, (input, target) in data_iter:
-        input = input.cuda()
-        target = target.cuda()
-
-        bs = input.size(0)
-        lr_scheduler.step(epoch)
-        data_time = time.time() - end
-
-        optimizer_step = ((i + 1) % batch_size_multiplier) == 0
-        loss, prec1, prec5 = step(input, target, optimizer_step=optimizer_step)
-        if ema is not None:
-            ema(model, epoch * steps_per_epoch + i)
-
-        it_time = time.time() - end
-        batch_time_m.update(it_time)
-        data_time_m.update(data_time)
-        losses_m.update(loss.item(), bs)
-        top1_m.update(prec1.item(), bs)
-        top5_m.update(prec5.item(), bs)
-
-        end = time.time()
-        if ((i + 1) % 20 == 0) and timeout_handler.interrupted:
-            time.sleep(5)
-            interrupted = True
-            break
-        if i == 1:
-            batch_size = bs
-        if (i % log_interval == 0) or (i == steps_per_epoch - 1):
-            if not torch.distributed.is_initialized(
-            ) or torch.distributed.get_rank() == 0:
-                learning_rate = optimizer.param_groups[0]["lr"]
-                log_name = 'Train-log'
-                logger.info(
-                    "{0}: [epoch:{1:>2d}] [{2:>2d}/{3}] "
-                    'DataTime: {data_time.val:.3f} ({data_time.avg:.3f}) '
-                    'BatchTime: {batch_time.val:.3f} ({batch_time.avg:.3f}) '
-                    'Loss: {loss.val:>7.4f} ({loss.avg:>6.4f}) '
-                    'Acc@1: {top1.val:>7.4f} ({top1.avg:>7.4f}) '
-                    'Acc@5: {top5.val:>7.4f} ({top5.avg:>7.4f}) '
-                    'lr: {lr:>4.6f} '.format(log_name,
-                                             epoch + 1,
-                                             i,
-                                             steps_per_epoch,
-                                             data_time=data_time_m,
-                                             batch_time=batch_time_m,
-                                             loss=losses_m,
-                                             top1=top1_m,
-                                             top5=top5_m,
-                                             lr=learning_rate))
-
-    return interrupted, losses_m.avg, top1_m.avg / 100.0, top5_m.avg / 100.0, batch_size
-
 
 
 def validation(val_loader, model, criterion):
