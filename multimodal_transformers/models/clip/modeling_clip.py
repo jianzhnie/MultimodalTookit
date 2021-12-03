@@ -1,13 +1,14 @@
 '''
 Author: jianzhnie
 Date: 2021-12-03 11:48:26
-LastEditTime: 2021-12-03 17:32:45
+LastEditTime: 2021-12-03 17:54:27
 LastEditors: jianzhnie
 Description:
 
 '''
 
 import timm
+import torch
 import torch.nn.functional as F
 from torch import nn
 from transformers import DistilBertConfig, DistilBertModel
@@ -139,3 +140,16 @@ if __name__ == '__main__':
     print(image_encoder)
     clp_model = CLIPModel()
     print(clp_model)
+
+    images = torch.randn(8, 3, 224, 224)
+    input_ids = torch.randint(5, 300, size=(8, 25))
+    attention_mask = torch.ones(8, 25)
+    batch = {
+        'image': images,
+        'input_ids': input_ids,
+        'attention_mask': attention_mask
+    }
+
+    CLIP = CLIPModel()
+    loss = CLIP(batch)
+    print(loss)

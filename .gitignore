@@ -130,3 +130,5 @@ examples/automlbechmark/data/processed/
 examples/automlbechmark/data/raw_data/
 examples/automlbechmark/data/
 examples/automlbechmark/results/
+*.pt
+*.ckpt
