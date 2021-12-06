@@ -1,7 +1,7 @@
 '''
 Author: jianzhnie
 Date: 2021-12-03 11:31:07
-LastEditTime: 2021-12-03 18:13:22
+LastEditTime: 2021-12-06 12:08:57
 LastEditors: jianzhnie
 Description:
 
@@ -9,8 +9,7 @@ Description:
 
 import itertools
 import sys
-sys.path.append('../../')
-import pandas as pd
+
 import torch
 from multimodal_transformers.models.clip.config_clip import ClipConfig as cfg
 from multimodal_transformers.models.clip.datasets_clip import build_loaders, make_train_valid_dfs
@@ -20,6 +19,7 @@ from multimodal_transformers.utils.model import get_lr
 from tqdm.autonotebook import tqdm
 from transformers import DistilBertTokenizer
 
+sys.path.append('../../')
 
 
 def train_epoch(model, train_loader, optimizer, lr_scheduler, step):

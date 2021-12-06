@@ -1,13 +1,13 @@
 '''
 Author: jianzhnie
 Date: 2021-12-03 17:49:30
-LastEditTime: 2021-12-03 18:13:36
+LastEditTime: 2021-12-06 12:09:31
 LastEditors: jianzhnie
 Description:
 
 '''
 import sys
-sys.path.append('../../')
+
 import cv2
 import matplotlib.pyplot as plt
 import torch
@@ -18,6 +18,7 @@ from multimodal_transformers.models.clip.modeling_clip import CLIPModel
 from tqdm import tqdm
 from transformers import DistilBertTokenizer
 
+sys.path.append('../../')
 
 
 def get_image_embeddings(valid_df, model_path):
