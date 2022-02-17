@@ -1,4 +1,4 @@
-# Multimodal Transformers | Transformers with Tabular Data
+# Multimodal Transformers
  Incorporate Tabular Data with HuggingFace Transformers
 
 A toolkit for incorporating multimodal data on top of text data for classification
@@ -37,12 +37,16 @@ from Liu et al.: [RoBERTa: A Robustly Optimized BERT Pretraining Approach](https
 [Unsupervised Cross-lingual Representation Learning at Scale](https://arxiv.org/abs/1911.02116) (ACL 2020)
 
 ## Included Datasets
+
+### Text && TabularData
 This repository also includes two kaggle datasets which contain text data and
 rich tabular features
 * [Women's Clothing E-Commerce Reviews](https://www.kaggle.com/nicapotato/womens-ecommerce-clothing-reviews) for Recommendation Prediction (Classification)
 * [Melbourne Airbnb Open Data](https://www.kaggle.com/tylerx/melbourne-airbnb-open-data) for Price Prediction (Regression)
 * [PetFindermy Adoption Prediction](https://www.kaggle.com/c/petfinder-adoption-prediction) for Pet Adoption Speed Prediction (Multiclass Classification)
-
+### Image && Tabular Data
+* [SIIM-ISIC Melanoma Classification](https://www.kaggle.com/c/siim-isic-melanoma-classification/overview)
+* [PetFindermy Adoption Prediction](https://www.kaggle.com/c/petfinder-adoption-prediction) for Pet Adoption Speed Prediction (Multiclass Classification)
 
 ## Working Examples
 To quickly see these models in action on say one of the above datasets with preset configurations
