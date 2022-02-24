@@ -1,15 +1,12 @@
 '''
 Author: jianzhnie
 Date: 2021-11-12 15:42:02
-LastEditTime: 2021-11-16 17:18:06
+LastEditTime: 2022-02-24 16:24:14
 LastEditors: jianzhnie
 Description:
 
 '''
-import logging
 import types
-
-logger = logging.getLogger(__name__)
 
 
 def convert_to_func(container_arg):
@@ -48,7 +45,6 @@ def normalize_numerical_feats(numerical_feats, transformer=None):
 
 def load_num_feats(df, num_bool_func):
     num_cols = get_matching_cols(df, num_bool_func)
-    logger.info(f'{len(num_cols)} numerical columns')
     df = df.copy()
     df[num_cols] = df[num_cols].astype(float)
     df[num_cols] = df[num_cols].fillna(

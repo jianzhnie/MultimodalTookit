@@ -1,9 +1,5 @@
-import logging
-
 import numpy as np
 from sklearn import preprocessing
-
-logger = logging.getLogger(__name__)
 
 
 class CategoricalFeatureEncoder:

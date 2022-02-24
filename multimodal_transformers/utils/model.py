@@ -1,10 +1,10 @@
-import logging
 import os
 import shutil
 from collections import OrderedDict
 
 import torch
 from torch import distributed as dist
+from transformer import logging
 
 
 def data2device(mmdata, device):

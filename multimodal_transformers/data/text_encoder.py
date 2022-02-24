@@ -1,13 +1,11 @@
 '''
 Author: jianzhnie
 Date: 2021-11-12 20:28:07
-LastEditTime: 2022-02-24 10:59:36
+LastEditTime: 2022-02-24 16:28:49
 LastEditors: jianzhnie
 Description:
 
 '''
-
-import logging
 import sys
 from functools import partial
 
@@ -16,8 +14,6 @@ import pandas as pd
 from .utils import agg_text_columns_func, convert_to_func, get_matching_cols
 
 sys.path.append('../')
-
-logger = logging.getLogger(__name__)
 
 
 def get_text_token(data_df,
@@ -35,17 +31,11 @@ def get_text_token(data_df,
     agg_func = partial(agg_text_columns_func, empty_text_values,
                        replace_empty_text)
     texts_cols = get_matching_cols(data_df, text_cols_func)
-    logger.info(f'Text columns: {texts_cols}')
     texts_list = data_df[texts_cols].agg(agg_func, axis=1).tolist()
     for i, text in enumerate(texts_list):
         texts_list[i] = f' {sep_text_token_str} '.join(text)
-    logger.info(f'Raw text example: {texts_list[0]}')
     hf_model_text_input = tokenizer(
         texts_list, padding=True, truncation=True, max_length=max_token_length)
-    tokenized_text_ex = ' '.join(
-        tokenizer.convert_ids_to_tokens(hf_model_text_input['input_ids'][0]))
-    logger.debug(f'Tokenized text example: {tokenized_text_ex}')
-
     return hf_model_text_input
 
 
@@ -70,7 +60,6 @@ if __name__ == '__main__':
     print(agg_func)
     texts_cols = get_matching_cols(df, text_cols_func)
     print(text_cols)
-    logger.info(f'Text columns: {texts_cols}')
     texts_list = df[texts_cols].agg(agg_func, axis=1).tolist()
     text_encoder = get_text_token(
         df,

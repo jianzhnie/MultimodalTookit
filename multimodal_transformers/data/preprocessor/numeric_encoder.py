@@ -1,13 +1,12 @@
 '''
 Author: jianzhnie
 Date: 2021-11-12 15:40:06
-LastEditTime: 2021-11-16 14:37:48
+LastEditTime: 2022-02-24 16:25:19
 LastEditors: jianzhnie
 Description:
 
 '''
 
-import logging
 from typing import List
 
 import numpy as np
@@ -15,8 +14,6 @@ import pandas as pd
 from sklearn.preprocessing import PowerTransformer, QuantileTransformer, StandardScaler
 
 from .base_preprocessor import BasePreprocessor, check_is_fitted
-
-logger = logging.getLogger(__name__)
 
 
 class NumericalFeatureTransformer(BasePreprocessor):

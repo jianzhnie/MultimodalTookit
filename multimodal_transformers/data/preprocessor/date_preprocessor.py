@@ -1,13 +1,12 @@
 '''
 Author: jianzhnie
 Date: 2021-11-12 15:40:06
-LastEditTime: 2021-11-15 09:35:38
+LastEditTime: 2022-02-24 16:24:51
 LastEditors: jianzhnie
 Description:
 
 '''
 
-import logging
 import re
 from typing import List
 
@@ -17,8 +16,6 @@ from pandas.tseries import offsets
 from pandas.tseries.frequencies import to_offset
 
 from .base_preprocessor import BasePreprocessor
-
-logger = logging.getLogger(__name__)
 
 
 class DatePreprocessor(BasePreprocessor):
@@ -42,9 +39,6 @@ class DatePreprocessor(BasePreprocessor):
         # The only features that are added are the date features extracted
         # from the date which are categorical in nature
         if added_features is not None:
-            logger.debug(
-                f'Added {added_features} features after encoding the date_columns'
-            )
             self.categorical_cols += added_features
             self.categorical_dim = (
                 len(self.categorical_cols)
