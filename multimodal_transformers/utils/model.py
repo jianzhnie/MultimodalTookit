@@ -4,7 +4,6 @@ from collections import OrderedDict
 
 import torch
 from torch import distributed as dist
-from transformer import logging
 
 
 def data2device(mmdata, device):
@@ -51,28 +50,18 @@ def adjust_learning_rate(optimizer, epoch, args):
     return lr
 
 
-_logger = logging.getLogger(__name__)
-
-
 def load_checkpoint(model, checkpoint_path, log_info=True):
     if os.path.isfile(checkpoint_path):
         checkpoint = torch.load(checkpoint_path, map_location='cuda:0')
         if isinstance(checkpoint, dict) and 'state_dict' in checkpoint:
-            if log_info:
-                _logger.info('Restoring model state from checkpoint...')
             new_state_dict = OrderedDict()
             for k, v in checkpoint['state_dict'].items():
                 name = k[7:] if k.startswith('module') else k
                 new_state_dict[name] = v
             model.load_state_dict(new_state_dict, strict=False)
-            if log_info:
-                _logger.info("Loaded checkpoint '{}'".format(checkpoint_path))
         else:
             model.load_state_dict(checkpoint, strict=False)
-            if log_info:
-                _logger.info("Loaded checkpoint '{}'".format(checkpoint_path))
     else:
-        _logger.error("No checkpoint found at '{}'".format(checkpoint_path))
         raise FileNotFoundError()
 
 
