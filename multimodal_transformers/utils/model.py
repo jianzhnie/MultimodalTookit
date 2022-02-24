@@ -7,6 +7,19 @@ import torch
 from torch import distributed as dist
 
 
+def data2device(mmdata, device):
+    item = dict()
+    item = {
+        key: val.to(device)
+        for key, val in mmdata.items() if torch.is_tensor(val)
+    }
+    item['deeptext'] = {
+        key: val.to(device)
+        for key, val in mmdata['deeptext'].items()
+    }
+    return item
+
+
 def save_checkpoint(state,
                     is_best,
                     checkpoint_dir,

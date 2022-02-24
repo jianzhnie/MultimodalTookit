@@ -1,18 +1,21 @@
 '''
 Author: jianzhnie
 Date: 2021-11-12 20:28:07
-LastEditTime: 2021-11-16 17:41:56
+LastEditTime: 2022-02-24 10:59:36
 LastEditors: jianzhnie
 Description:
 
 '''
 
 import logging
+import sys
 from functools import partial
 
 import pandas as pd
 
 from .utils import agg_text_columns_func, convert_to_func, get_matching_cols
+
+sys.path.append('../')
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +72,7 @@ if __name__ == '__main__':
     print(text_cols)
     logger.info(f'Text columns: {texts_cols}')
     texts_list = df[texts_cols].agg(agg_func, axis=1).tolist()
-    text_encoder, df = get_text_token(
+    text_encoder = get_text_token(
         df,
         text_cols=['Title', 'Review Text'],
         tokenizer=tokenizer,
