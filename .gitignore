@@ -126,3 +126,4 @@ lightning_logs/
 AutoML_*
 *.pt
 *.ckpt
+logs/
