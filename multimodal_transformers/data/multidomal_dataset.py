@@ -150,9 +150,23 @@ class TorchTabularTextDataset(Dataset):
             i for i in range(len(np.unique(labels)))
         ]
 
+    # def __getitem__(self, idx):
+    #     item = dict()
+    #     item['deeptext'] = {
+    #         key: torch.tensor(val[idx])
+    #         for key, val in self.encodings.items()
+    #     }
+    #     item['deeptabular'] = torch.tensor(self.tabular_features[idx]).float() \
+    #         if self.tabular_features is not None else torch.zeros(0)
+    #     item['deepimage'] = torch.tensor(self.image_features[idx]).float() \
+    #         if self.image_features is not None else torch.zeros(0)
+    #     item['labels'] = torch.tensor(
+    #         self.labels[idx]) if self.labels is not None else None
+    #     return item
+
     def __getitem__(self, idx):
         item = dict()
-        item['deeptext'] = {
+        item = {
             key: torch.tensor(val[idx])
             for key, val in self.encodings.items()
         }

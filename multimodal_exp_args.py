@@ -1,12 +1,9 @@
 import json
-import logging
 from dataclasses import dataclass, field
 from typing import Optional, Tuple
 
 import torch
 from transformers.training_args import TrainingArguments, cached_property, torch_required
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -210,13 +207,6 @@ class OurTrainingArguments(TrainingArguments):
             'Number of updates steps to accumulate before performing a backward/update pass.'
         },
     )
-    log_level: str = field(
-        default='info',
-        metadata={
-            'help':
-            "Logger log level to use on the main node. Possible choices are the log levels as strings: 'debug', 'info', 'warning', 'error' and 'critical', plus a 'passive' level which doesn't set anything and lets the application set the level. Defaults to 'passive'.",
-        },
-    )
     learning_rate: float = field(
         default=5e-5, metadata={'help': 'The initial learning rate for Adam.'})
 
@@ -229,7 +219,6 @@ class OurTrainingArguments(TrainingArguments):
     @cached_property
     @torch_required
     def _setup_devices(self) -> Tuple['torch.device', int]:
-        logger.info('PyTorch: setting up devices')
         if self.no_cuda:
             device = torch.device('cpu')
             n_gpu = 0
