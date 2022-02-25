@@ -7,19 +7,18 @@ import numpy as np
 import pandas as pd
 import torch
 import transformers
-from accelerate import Accelerator
+from mmt.data.multimodal_dataset import MMDataset
+from mmt.data.preprocessor import TabPreprocessor
+from mmt.data.utils.text_token import get_text_token
+from mmt.models import MultiModalModel
+from mmt.models.tabular import TabMlp
+from mmt.models.text import AutoModelWithText
+from mmt.utils.model import data2device
+from mmt.utils.utils import create_dir_if_not_exists, get_args_info_as_str
 from multimodal_exp_args import ModelArguments, MultimodalDataTrainingArguments, OurTrainingArguments
-from multimodal_transformers.data import TabPreprocessor
-from multimodal_transformers.data.multidomal_dataset import TorchTabularTextDataset
-from multimodal_transformers.data.text_encoder import get_text_token
-from multimodal_transformers.models import MultidomalModel
-from multimodal_transformers.models.tabular import TabMlp
-from multimodal_transformers.models.text import AutoModelWithText
-from multimodal_transformers.utils.model import data2device
-from multimodal_transformers.utils.util import create_dir_if_not_exists
 from torch import nn as nn
 from torch.utils.data import DataLoader, RandomSampler
-from transformers import AdamW, AutoConfig, AutoTokenizer, HfArgumentParser, default_data_collator, get_scheduler, set_seed
+from transformers import AdamW, AutoConfig, AutoTokenizer, HfArgumentParser, get_scheduler, set_seed
 
 logger = logging.getLogger(__name__)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -44,37 +43,30 @@ def main():
             f'Output directory ({training_args.output_dir}) already exists and is not empty. Use --overwrite_output_dir to overcome.'
         )
 
-    # Initialize the accelerator. We will let the accelerator handle device placement for us in this example.
-    accelerator = Accelerator()
-
     # Setup logging
+    create_dir_if_not_exists(training_args.output_dir)
+    stream_handler = logging.StreamHandler(sys.stderr)
+    file_handler = logging.FileHandler(
+        filename=os.path.join(training_args.output_dir, 'train_log.txt'),
+        mode='w+')
     logging.basicConfig(
-        format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
+        format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
+        level=logging.INFO
+        if training_args.local_rank in [-1, 0] else logging.WARN,
         datefmt='%m/%d/%Y %H:%M:%S',
-        handlers=[logging.StreamHandler(sys.stdout)],
+        handlers=[stream_handler, file_handler])
+    logger.info(
+        f'======== Model Args ========\n{get_args_info_as_str(model_args)}\n')
+    logger.info(
+        f'======== Data Args ========\n{get_args_info_as_str(data_args)}\n')
+    logger.info(
+        f'======== Training Args ========\n{get_args_info_as_str(training_args)}\n'
     )
-    logger.info(accelerator.state)
-
     # Setup logging, we only want one process per machine to log things on the screen.
     # accelerator.is_local_main_process is only True for one process per machine.
-    logger.setLevel(
-        logging.INFO if accelerator.is_local_main_process else logging.ERROR)
-    if accelerator.is_local_main_process:
-        datasets.utils.logging.set_verbosity_warning()
-        transformers.utils.logging.set_verbosity_info()
-    else:
-        datasets.utils.logging.set_verbosity_error()
-        transformers.utils.logging.set_verbosity_error()
-
-    # Log on each process the small summary:
-    logger.warning(
-        f'Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}'
-        +
-        f'distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}'
-    )
-    logger.info(f'Training/evaluation parameters {training_args}')
-
-    create_dir_if_not_exists(training_args.output_dir)
+    logger.setLevel(logging.INFO)
+    datasets.utils.logging.set_verbosity_warning()
+    transformers.utils.logging.set_verbosity_info()
 
     # Load pretrained model and tokenizer
     #
@@ -114,13 +106,15 @@ def main():
     label_list = data_args.column_info['label_list']
     labels = data_df[label_col].values
 
-    train_dataset = TorchTabularTextDataset(
+    train_dataset = MMDataset(
         text_encodings=hf_model_text_input,
         tabular_features=X_tab,
         labels=labels,
         label_list=label_list)
 
     val_dataset = train_dataset
+
+    # model
     tabmlp = TabMlp(
         mlp_hidden_dims=[8, 4],
         column_idx=tab_preprocessor.column_idx,
@@ -148,25 +142,17 @@ def main():
         config=config,
         cache_dir=model_args.cache_dir)
 
-    multimodal_model = MultidomalModel(
+    multimodal_model = MultiModalModel(
         deeptabular=tabmlp,
         deeptext=text_model,
         head_hidden_dims=[128, 64],
         pred_dim=num_labels)
 
     # DataLoaders creation:
-    data_collator = default_data_collator
     train_sampler = RandomSampler(train_dataset)
     train_dataloader = DataLoader(
-        train_dataset,
-        collate_fn=data_collator,
-        sampler=train_sampler,
-        batch_size=16,
-        num_workers=2,
-        shuffle=True,
-    )
-    val_dataloader = DataLoader(
-        val_dataset, collate_fn=data_collator, batch_size=16)
+        train_dataset, sampler=train_sampler, batch_size=8, num_workers=4)
+    val_dataloader = DataLoader(val_dataset, batch_size=8)
 
     # Optimizer
     # Split weights in two groups, one with weight decay and the other not.
@@ -200,27 +186,8 @@ def main():
         num_training_steps=10000,
     )
 
-    # Prepare everything with our `accelerator`.
-    multimodal_model, optimizer, train_dataloader, val_dataloader = accelerator.prepare(
-        multimodal_model, optimizer, train_dataloader, val_dataloader)
-
     criterion = nn.CrossEntropyLoss()
     multimodal_model.to(device)
-
-    logger.info('***** Running training *****')
-    logger.info(f'  Num examples = {len(train_dataset)}')
-    logger.info(f'  Num Epochs = {training_args.num_train_epochs}')
-    logger.info(
-        f'  Instantaneous batch size per device = {training_args.per_device_train_batch_size}'
-    )
-    logger.info(
-        f'  Total train batch size (w. parallel, distributed & accumulation) = {training_args.total_batch_size}'
-    )
-    logger.info(
-        f'  Gradient Accumulation steps = {training_args.gradient_accumulation_steps}'
-    )
-    logger.info(
-        f'  Total optimization steps = {training_args.max_train_steps}')
 
     # Only show the progress bar once on each machine.
     for epoch in range(training_args.num_train_epochs):
@@ -238,24 +205,20 @@ def main():
             criterion=criterion)
 
 
-def train(train_loader, model, criterion, accelerator, optimizer, lr_scheduler,
-          args):
+def train(train_loader, model, criterion, optimizer, lr_scheduler):
     # switch to train mode
     train_loss = 0
     model.train()
     for step, batch in enumerate(train_loader):
-        batch = data2device(batch)
+        batch = data2device(batch, device=device)
         target = batch['labels']
         # compute output
-        output = model(**batch)
+        output = model(batch)
         loss = criterion(output, target)
-        loss = loss / args.gradient_accumulation_steps
-        accelerator.backward(loss)
-        if step % args.gradient_accumulation_steps == 0 or step == len(
-                train_loader) - 1:
-            optimizer.step()
-            lr_scheduler.step()
-            optimizer.zero_grad()
+        print('loss', loss)
+        optimizer.step()
+        lr_scheduler.step()
+        optimizer.zero_grad()
     return train_loss
 
 
@@ -265,7 +228,7 @@ def validation(val_loader, model, criterion):
     epoch_loss = 0
     with torch.no_grad():
         for step, batch in enumerate(val_loader):
-            batch = data2device(batch)
+            batch = data2device(batch, device=device)
             target = batch['labels']
             # compute output
             output = model(batch)

@@ -178,6 +178,9 @@ class OurTrainingArguments(TrainingArguments):
     gpu_num: int = field(
         default=0, metadata={'help': 'The gpu number to train on'})
 
+    num_train_epochs: int = field(
+        default=10, metadata={'help': 'The number of epochs to train on'})
+
     debug_dataset: bool = field(
         default=False,
         metadata={

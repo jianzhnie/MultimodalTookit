@@ -1,19 +1,16 @@
 '''
 Author: jianzhnie
 Date: 2021-11-12 20:28:07
-LastEditTime: 2022-02-24 16:28:49
+LastEditTime: 2022-02-25 11:13:16
 LastEditors: jianzhnie
 Description:
 
 '''
-import sys
 from functools import partial
 
 import pandas as pd
 
 from .utils import agg_text_columns_func, convert_to_func, get_matching_cols
-
-sys.path.append('../')
 
 
 def get_text_token(data_df,

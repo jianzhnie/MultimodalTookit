@@ -5,7 +5,7 @@ import pandas as pd
 from sklearn.preprocessing import PowerTransformer, QuantileTransformer, StandardScaler
 
 from .base_preprocessor import BasePreprocessor, check_is_fitted
-from .deeptabular_utils import LabelEncoder
+from .tabular.deeptabular_utils import LabelEncoder
 
 
 def embed_sz_rule(n_cat):
