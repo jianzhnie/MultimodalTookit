@@ -12,8 +12,9 @@ from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
-from multimodal_transformers.models.tabular.tab_mlp import MLP
 from torch import Tensor
+
+from .tabular.tab_mlp import MLP, TabMlp
 
 sys.path.append('../../')
 
@@ -310,7 +311,6 @@ class MultiModalModel(nn.Module):
 if __name__ == '__main__':
     import pandas as pd
     import sys
-    from tabular.tab_mlp import TabMlp
     from text.deeptext import BertWithTabular
     from transformers import AutoConfig
     from config import TabularConfig
