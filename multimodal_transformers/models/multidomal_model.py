@@ -21,7 +21,7 @@ use_cuda = torch.cuda.is_available()
 device = torch.device('cuda' if use_cuda else 'cpu')
 
 
-class MultidomalModel(nn.Module):
+class MultiModalModel(nn.Module):
     r"""Main collector class that combines all ``wide``, ``deeptabular``
     (which can be a number of architectures), ``deeptext`` and
     ``deepimage`` models.
@@ -129,7 +129,7 @@ class MultidomalModel(nn.Module):
         head_linear_first: bool = False,
         pred_dim: int = 2,
     ):
-        super(MultidomalModel, self).__init__()
+        super(MultiModalModel, self).__init__()
 
         self._check_model_components(
             wide,
@@ -339,6 +339,6 @@ if __name__ == '__main__':
     config.tabular_config = tabular_config
     deeptext = BertWithTabular(config=config)
     print(deeptext)
-    model = MultidomalModel(deeptabular=tabmlp, deeptext=deeptext)
+    model = MultiModalModel(deeptabular=tabmlp, deeptext=deeptext)
     print(model)
     print(model.deephead)

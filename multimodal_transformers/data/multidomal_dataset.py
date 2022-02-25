@@ -1,7 +1,7 @@
 '''
 Author: jianzhnie
 Date: 2021-11-12 14:42:32
-LastEditTime: 2022-02-24 11:39:03
+LastEditTime: 2022-02-25 10:28:35
 LastEditors: jianzhnie
 Description:
 
@@ -150,23 +150,9 @@ class TorchTabularTextDataset(Dataset):
             i for i in range(len(np.unique(labels)))
         ]
 
-    # def __getitem__(self, idx):
-    #     item = dict()
-    #     item['deeptext'] = {
-    #         key: torch.tensor(val[idx])
-    #         for key, val in self.encodings.items()
-    #     }
-    #     item['deeptabular'] = torch.tensor(self.tabular_features[idx]).float() \
-    #         if self.tabular_features is not None else torch.zeros(0)
-    #     item['deepimage'] = torch.tensor(self.image_features[idx]).float() \
-    #         if self.image_features is not None else torch.zeros(0)
-    #     item['labels'] = torch.tensor(
-    #         self.labels[idx]) if self.labels is not None else None
-    #     return item
-
     def __getitem__(self, idx):
         item = dict()
-        item = {
+        item['deeptext'] = {
             key: torch.tensor(val[idx])
             for key, val in self.encodings.items()
         }
@@ -177,6 +163,20 @@ class TorchTabularTextDataset(Dataset):
         item['labels'] = torch.tensor(
             self.labels[idx]) if self.labels is not None else None
         return item
+
+    # def __getitem__(self, idx):
+    #     item = dict()
+    #     item = {
+    #         key: torch.tensor(val[idx])
+    #         for key, val in self.encodings.items()
+    #     }
+    #     item['deeptabular'] = torch.tensor(self.tabular_features[idx]).float() \
+    #         if self.tabular_features is not None else torch.zeros(0)
+    #     item['deepimage'] = torch.tensor(self.image_features[idx]).float() \
+    #         if self.image_features is not None else torch.zeros(0)
+    #     item['labels'] = torch.tensor(
+    #         self.labels[idx]) if self.labels is not None else None
+    #     return item
 
     def __len__(self):
         return len(self.labels)

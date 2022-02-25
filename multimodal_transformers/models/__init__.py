@@ -1,12 +1,12 @@
 '''
 Author: jianzhnie
 Date: 2021-11-08 17:11:49
-LastEditTime: 2021-11-17 10:03:39
+LastEditTime: 2022-02-25 10:52:43
 LastEditors: jianzhnie
 Description:
 
 '''
 
-from .multidomal_model import MultidomalModel
+from .multidomal_model import MultiModalModel
 
-__all__ = ['MultidomalModel']
+__all__ = ['MultiModalModel']

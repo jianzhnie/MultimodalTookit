@@ -1,7 +1,7 @@
 '''
 Author: jianzhnie
 Date: 2021-11-17 09:29:59
-LastEditTime: 2022-02-24 12:27:30
+LastEditTime: 2022-02-25 10:07:53
 LastEditors: jianzhnie
 Description:
 
@@ -46,7 +46,10 @@ def get_args_info_as_str(config_flags):
 def sorted_nicely(sort_keys, reverse=False):
 
     def tryint(s):
-        return int(s)
+        try:
+            return int(s)
+        except:
+            return s
 
     def alphanum_key(s):
         if type(s) is not str:
