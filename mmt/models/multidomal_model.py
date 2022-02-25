@@ -7,19 +7,68 @@ fixing is simple (simply define new attributes that are the nn.Sequential object
 number of tests and tutorials). Therefore, I will introduce that fix when I do a major release. For now, we live with it.
 """
 import sys
+from turtle import forward
 import warnings
 from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
 from torch import Tensor
-
+from transformers import BertModel, BertPreTrainedModel
+from .vision import ImageEncoder
 from .tabular.tab_mlp import MLP, TabMlp
 
 sys.path.append('../../')
 
 use_cuda = torch.cuda.is_available()
 device = torch.device('cuda' if use_cuda else 'cpu')
+
+
+class MultiModalBert(BertPreTrainedModel):
+    """
+    Bert Model transformer with a sequence classification/regression head as well as
+    a TabularFeatCombiner module to combine categorical and numerical features
+    with the Bert pooled output
+
+    Parameters:
+        hf_model_config (:class:`~transformers.BertConfig`):
+            Model configuration class with all the parameters of the model.
+            This object must also have a tabular_config member variable that is a
+            :obj:`TabularConfig` instance specifying the configs for :obj:`TabularFeatCombiner`
+    """
+
+    def __init__(self, hf_model_config):
+        super().__init__(hf_model_config)
+
+        text_config = hf_model_config.text_config
+        tabular_config = hf_model_config.tabular_config
+        vision_config = hf_model_config.vision_config
+
+        if type(tabular_config) is dict:  # when loading from saved model
+            tabular_config = TabularConfig(**tabular_config)
+        else:
+            self.config.tabular_config = tabular_config.__dict__
+
+        self.bert = BertModel(text_config)
+        self.image_encoder = ImageEncoder()
+        self.tabular_encoder = TabMlp()
+
+    def forward(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        head_mask=None,
+        inputs_embeds=None,
+        labels=None,
+        class_weights=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        cat_feats=None,
+        numerical_feats=None):
+
+        return
 
 
 class MultiModalModel(nn.Module):
