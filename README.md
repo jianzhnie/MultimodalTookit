@@ -1,5 +1,5 @@
 # Multimodal Transformers
- Incorporate Tabular Data with HuggingFace Transformers
+Incorporate Image, Tabular Data with HuggingFace Transformers
 
 A toolkit for incorporating multimodal data on top of text data for classification
 and regression tasks. It uses HuggingFace transformers as the base model for text features.
@@ -56,12 +56,13 @@ $ python main.py ./datasets/Melbourne_Airbnb_Open_Data/train_config.json
 
 Or if you prefer command line arguments run
 ```
-$ python main.py \
-    --output_dir=./logs/test \
+python main.py \
+    --output_dir=./logs/Womens_Clothing_E-Commerce_Reviews \
     --task=classification \
     --combine_feat_method=individual_mlps_on_cat_and_numerical_feats_then_concat \
     --do_train \
-    --model_name_or_path=distilbert-base-uncased \
+    --overwrite_output_dir \
+    --model_name_or_path=bert-base-uncased \
     --data_path=./datasets/Womens_Clothing_E-Commerce_Reviews \
     --column_info_path=./datasets/Womens_Clothing_E-Commerce_Reviews/column_info.json
 ```
