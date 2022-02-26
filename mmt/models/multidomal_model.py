@@ -164,12 +164,12 @@ class MultiModalBert(BertPreTrainedModel):
         head_linear_first,
     ):
         deep_dim = 0
-        if self.deeptabular is not None:
-            deep_dim += self.deeptabular.output_dim
-        if self.deeptext is not None:
-            deep_dim += self.deeptext.output_dim
-        if self.deepimage is not None:
-            deep_dim += self.deepimage.output_dim
+        if self.tabular_encoder is not None:
+            deep_dim += self.tabular_encoder.output_dim
+        if self.text_encoder is not None:
+            deep_dim += self.text_encoder.output_dim
+        if self.image_encoder is not None:
+            deep_dim += self.image_encoder.output_dim
 
         head_hidden_dims = [deep_dim] + head_hidden_dims
         deephead = MLP(
