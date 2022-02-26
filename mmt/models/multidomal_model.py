@@ -14,8 +14,9 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 from transformers import BertModel, BertPreTrainedModel
-from .vision import ImageEncoder
+
 from .tabular.tab_mlp import MLP, TabMlp
+from .vision import ImageEncoder
 
 sys.path.append('../../')
 
@@ -24,10 +25,9 @@ device = torch.device('cuda' if use_cuda else 'cpu')
 
 
 class MultiModalBert(BertPreTrainedModel):
-    """
-    Bert Model transformer with a sequence classification/regression head as well as
-    a TabularFeatCombiner module to combine categorical and numerical features
-    with the Bert pooled output
+    """Bert Model transformer with a sequence classification/regression head as
+    well as a TabularFeatCombiner module to combine categorical and numerical
+    features with the Bert pooled output.
 
     Parameters:
         hf_model_config (:class:`~transformers.BertConfig`):
@@ -41,16 +41,32 @@ class MultiModalBert(BertPreTrainedModel):
 
         text_config = hf_model_config.text_config
         tabular_config = hf_model_config.tabular_config
-        vision_config = hf_model_config.vision_config
+        deephead_config = hf_model_config.head_config
 
         if type(tabular_config) is dict:  # when loading from saved model
             tabular_config = TabularConfig(**tabular_config)
         else:
             self.config.tabular_config = tabular_config.__dict__
 
-        self.bert = BertModel(text_config)
-        self.image_encoder = ImageEncoder()
-        self.tabular_encoder = TabMlp(text_config)
+        self.text_encoder = BertModel(text_config)
+        self.image_encoder = ImageEncoder(is_require_grad=True)
+        self.tabular_encoder = TabMlp(tabular_config)
+        self.head_encoder = self._build_deephead(deephead_config)
+
+        if self.tabular_encoder is not None:
+            self.is_tabnet = self.tabular_encoder.__class__.__name__ == 'TabNet'
+        else:
+            self.is_tabnet = False
+
+        self._check_model_components(
+            wide=None,
+            deeptabular=self.tabular_encoder,
+            deeptext=self.text_encoder,
+            deepimage=self.image_encoder,
+            deephead=self.head_encoder,
+            head_hidden_dims=None,
+            pred_dim=None,
+        )
 
     def forward(self,
                 input_ids=None,
@@ -68,7 +84,69 @@ class MultiModalBert(BertPreTrainedModel):
                 tabular_feature=None,
                 image_feature=None):
 
-        text_outputs = self.bert(
+        text_output = self._forward_text(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
+            labels=labels,
+            class_weights=class_weights,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states)
+        image_output = self._forward_deepimage(image_feature)
+        tabular_output = self._forward_deeptabular(tabular_feature)
+
+        outputs = torch.cat([text_output, image_output, tabular_output],
+                            axis=1)
+
+        deephead_out = self._forward_head(deep_side=outputs)
+        return deephead_out
+
+    def _forward_deeptabular(self,
+                             cat_feats=None,
+                             numerical_feats=None,
+                             tabular_feature=None,
+                             image_feature=None):
+        if self.tabular_encoder is not None:
+            tabular_output = self.tabular_encoder()
+        else:
+            tabular_output = torch.FloatTensor()
+
+        return tabular_output
+
+    def _forward_deepimage(self, image_feature=None):
+        if self.image_encoder is not None:
+            image_output = self.image_encoder(image_feature)
+        else:
+            image_output = torch.FloatTensor()
+
+        return image_output
+
+    def _forward_head(self, deep_side):
+        deephead_out = self.head_encoder(deep_side)
+        fc_layer = nn.Linear(deephead_out.size(1), self.pred_dim)
+        output = fc_layer(deephead_out)
+        return output
+
+    def _forward_text(self,
+                      input_ids=None,
+                      attention_mask=None,
+                      token_type_ids=None,
+                      position_ids=None,
+                      head_mask=None,
+                      inputs_embeds=None,
+                      labels=None,
+                      class_weights=None,
+                      output_attentions=None,
+                      output_hidden_states=None,
+                      cat_feats=None,
+                      numerical_feats=None,
+                      tabular_feature=None,
+                      image_feature=None):
+
+        outputs = self.bert(
             input_ids,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
@@ -78,13 +156,108 @@ class MultiModalBert(BertPreTrainedModel):
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
         )
-        text_pooled_output = text_outputs[1]
-        text_pooled_output = self.dropout(text_pooled_output)
+        pooled_output = outputs[1]
+        pooled_output = self.dropout(pooled_output)
+        return pooled_output
 
-        image_output = self.image_encoder(image_feature)
-        tabular_output = self.tabular_encoder(tabular_feature)
+    def _build_deephead(
+        self,
+        head_hidden_dims,
+        head_activation,
+        head_dropout,
+        head_batchnorm,
+        head_batchnorm_last,
+        head_linear_first,
+    ):
+        deep_dim = 0
+        if self.deeptabular is not None:
+            deep_dim += self.deeptabular.output_dim
+        if self.deeptext is not None:
+            deep_dim += self.deeptext.output_dim
+        if self.deepimage is not None:
+            deep_dim += self.deepimage.output_dim
 
-        return
+        head_hidden_dims = [deep_dim] + head_hidden_dims
+        deephead = MLP(
+            head_hidden_dims,
+            head_activation,
+            head_dropout,
+            head_batchnorm,
+            head_batchnorm_last,
+            head_linear_first,
+        )
+
+        deephead.add_module('head_out',
+                            nn.Linear(head_hidden_dims[-1], self.pred_dim))
+        return deephead
+
+    @staticmethod  # noqa: C901
+    def _check_model_components(
+        wide,
+        deeptabular,
+        deeptext,
+        deepimage,
+        deephead,
+        head_hidden_dims,
+        pred_dim,
+    ):
+
+        if wide is not None:
+            assert wide.wide_linear.weight.size(1) == pred_dim, (
+                "the 'pred_dim' of the wide component ({}) must be equal to the 'pred_dim' "
+                'of the deep component and the overall model itself ({})'.
+                format(wide.wide_linear.weight.size(1), pred_dim))
+        if deeptabular is not None and not hasattr(deeptabular, 'output_dim'):
+            raise AttributeError(
+                "deeptabular model must have an 'output_dim' attribute. "
+                'See pytorch-widedeep.models.deep_text.DeepText')
+        if deeptabular is not None:
+            is_tabnet = deeptabular.__class__.__name__ == 'TabNet'
+            has_wide_text_or_image = (
+                wide is not None or deeptext is not None
+                or deepimage is not None)
+            if is_tabnet and has_wide_text_or_image:
+                warnings.warn(
+                    "'WideDeep' is a model comprised by multiple components and the 'deeptabular'"
+                    " component is 'TabNet'. We recommend using 'TabNet' in isolation."
+                    " The reasons are: i)'TabNet' uses sparse regularization which partially losses"
+                    ' its purpose when used in combination with other components.'
+                    " If you still want to use a multiple component model with 'TabNet',"
+                    " consider setting 'lambda_sparse' to 0 during training. ii) The feature"
+                    ' importances will be computed only for TabNet but the model will comprise multiple'
+                    " components. Therefore, such importances will partially lose their 'meaning'.",
+                    UserWarning,
+                )
+        if deeptext is not None and not hasattr(deeptext, 'output_dim'):
+            raise AttributeError(
+                "deeptext model must have an 'output_dim' attribute. "
+                'See pytorch-widedeep.models.deep_text.DeepText')
+        if deepimage is not None and not hasattr(deepimage, 'output_dim'):
+            raise AttributeError(
+                "deepimage model must have an 'output_dim' attribute. "
+                'See pytorch-widedeep.models.deep_text.DeepText')
+        if deephead is not None and head_hidden_dims is not None:
+            raise ValueError(
+                "both 'deephead' and 'head_hidden_dims' are not None. Use one of the other, but not both"
+            )
+        if (head_hidden_dims is not None and not deeptabular and not deeptext
+                and not deepimage):
+            raise ValueError(
+                "if 'head_hidden_dims' is not None, at least one deep component must be used"
+            )
+        if deephead is not None:
+            deephead_inp_feat = next(deephead.parameters()).size(1)
+            output_dim = 0
+            if deeptabular is not None:
+                output_dim += deeptabular.output_dim
+            if deeptext is not None:
+                output_dim += deeptext.output_dim
+            if deepimage is not None:
+                output_dim += deepimage.output_dim
+            assert deephead_inp_feat == output_dim, (
+                "if a custom 'deephead' is used its input features ({}) must be equal to "
+                'the output features of the deep component ({})'.format(
+                    deephead_inp_feat, output_dim))
 
 
 class MultiModalModel(nn.Module):
