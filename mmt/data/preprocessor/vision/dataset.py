@@ -1,11 +1,13 @@
 """Dataset implementation for specific task(s)"""
 # pylint: disable=consider-using-generator
 import logging
+import math
 import os
 
 import pandas as pd
 from PIL import Image
 from torch.utils.data import Dataset
+from torchvision import transforms
 
 logger = logging.getLogger()
 
@@ -16,11 +18,10 @@ def _absolute_pathify(df, root=None, column='image'):
         return df
     assert column in df.columns
     assert isinstance(root, str), 'Invalid root path: {}'.format(root)
-    root = os.path.abspath(os.path.expanduser(root))
     for i, _ in df.iterrows():
-        path = df.at[i, 'image']
+        path = df.at[i, column]
         if not os.path.isabs(path):
-            df.at[i, 'image'] = os.path.join(root, os.path.expanduser(path))
+            df.at[i, column] = os.path.join(root, os.path.expanduser(path))
     return df
 
 
@@ -35,16 +36,18 @@ def img_from_csv(df, root=None, image_column='image'):
         The relative root for image paths stored in csv file.
     image_column : str, default is 'image'
         The name of the column for image paths.
-    label_column : str, default is 'label'
-        The name for the label column, leave it as is if no label column is available. Note that
-        in such case you won't be able to train with this dataset, but can still visualize the images.
     """
     assert image_column in df.columns, f'`{image_column}` column is required, used for accessing the original images'
     df = _absolute_pathify(df, root=root, column=image_column)
+    df = df.rename(
+        columns={
+            image_column: 'image',
+        }, errors='ignore')
+    df = df.reset_index(drop=True)
     return df
 
 
-class TorchImageClassificationDataset(Dataset):
+class TorchImageDataset(Dataset):
     """Internal wrapper read entries in pd.DataFrame as images/labels.
 
     Parameters
@@ -55,12 +58,40 @@ class TorchImageClassificationDataset(Dataset):
         torch function for image transformation
     """
 
-    def __init__(self, dataset, transform=None):
+    def __init__(self,
+                 dataset,
+                 input_size=224,
+                 crop_ratio=0.875,
+                 is_train=True):
         assert isinstance(dataset, pd.DataFrame)
         assert 'image' in dataset.columns
         self._dataset = dataset
         self._imread = Image.open
-        self.transform = transform
+
+        normalize = transforms.Normalize([0.485, 0.456, 0.406],
+                                         [0.229, 0.224, 0.225])
+        jitter_param = 0.4
+        crop_ratio = crop_ratio if crop_ratio > 0 else 0.875
+        resize = int(math.ceil(input_size / crop_ratio))
+        transform_train = transforms.Compose([
+            transforms.RandomResizedCrop(input_size),
+            transforms.RandomHorizontalFlip(),
+            transforms.ColorJitter(
+                brightness=jitter_param,
+                contrast=jitter_param,
+                saturation=jitter_param),
+            transforms.ToTensor(), normalize
+        ])
+        transform_test = transforms.Compose([
+            transforms.Resize(resize),
+            transforms.CenterCrop(input_size),
+            transforms.ToTensor(), normalize
+        ])
+
+        if is_train is None:
+            self.transform = transform_train
+        else:
+            self.transform = transform_test
 
     def __len__(self):
         return self._dataset.shape[0]
@@ -74,10 +105,7 @@ class TorchImageClassificationDataset(Dataset):
 
 
 if __name__ == '__main__':
-    import autogluon.core as ag
-    csv_file = ag.utils.download(
-        'https://autogluon.s3-us-west-2.amazonaws.com/datasets/petfinder_example.csv'
-    )
+    csv_file = '/Users/jianzhengnie/work/MultimodalTransformers/a.csv'
     df = pd.read_csv(csv_file)
-    df = img_from_csv(df, root='root')
+    df = img_from_csv(df, root='root', image_column='image_name')
     print(df)
