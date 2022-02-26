@@ -21,6 +21,7 @@ class ImageEncoder(nn.Module):
         self.resnet_encoder = self.build_encoder()
         # Flatten the feature map grid [B, D, H, W] --> [B, D, H*W]
         self.flatten = nn.Flatten(start_dim=1, end_dim=3)
+        self.output_dim = 2048
 
     def forward(self, x: Tensor) -> Tensor:  # type: ignore
         r"""Forward pass connecting the `'backbone'` with the `'head layers'`"""
