@@ -7,7 +7,6 @@ fixing is simple (simply define new attributes that are the nn.Sequential object
 number of tests and tutorials). Therefore, I will introduce that fix when I do a major release. For now, we live with it.
 """
 import sys
-from turtle import forward
 import warnings
 from typing import Dict, List, Optional
 
@@ -51,22 +50,39 @@ class MultiModalBert(BertPreTrainedModel):
 
         self.bert = BertModel(text_config)
         self.image_encoder = ImageEncoder()
-        self.tabular_encoder = TabMlp()
+        self.tabular_encoder = TabMlp(text_config)
 
-    def forward(
-        self,
-        input_ids=None,
-        attention_mask=None,
-        token_type_ids=None,
-        position_ids=None,
-        head_mask=None,
-        inputs_embeds=None,
-        labels=None,
-        class_weights=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        cat_feats=None,
-        numerical_feats=None):
+    def forward(self,
+                input_ids=None,
+                attention_mask=None,
+                token_type_ids=None,
+                position_ids=None,
+                head_mask=None,
+                inputs_embeds=None,
+                labels=None,
+                class_weights=None,
+                output_attentions=None,
+                output_hidden_states=None,
+                cat_feats=None,
+                numerical_feats=None,
+                tabular_feature=None,
+                image_feature=None):
+
+        text_outputs = self.bert(
+            input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+        )
+        text_pooled_output = text_outputs[1]
+        text_pooled_output = self.dropout(text_pooled_output)
+
+        image_output = self.image_encoder(image_feature)
+        tabular_output = self.tabular_encoder(tabular_feature)
 
         return
 
