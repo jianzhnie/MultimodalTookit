@@ -136,14 +136,9 @@ class MultiModalBert(BertPreTrainedModel):
                       position_ids=None,
                       head_mask=None,
                       inputs_embeds=None,
-                      labels=None,
                       class_weights=None,
                       output_attentions=None,
-                      output_hidden_states=None,
-                      cat_feats=None,
-                      numerical_feats=None,
-                      tabular_feature=None,
-                      image_feature=None):
+                      output_hidden_states=None):
 
         outputs = self.bert(
             input_ids,
