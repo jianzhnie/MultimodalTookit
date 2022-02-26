@@ -107,8 +107,7 @@ class MultiModalBert(BertPreTrainedModel):
     def _forward_deeptabular(self,
                              cat_feats=None,
                              numerical_feats=None,
-                             tabular_feature=None,
-                             image_feature=None):
+                             tabular_feature=None):
         if self.tabular_encoder is not None:
             tabular_output = self.tabular_encoder()
         else:
