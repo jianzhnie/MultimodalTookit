@@ -7,10 +7,12 @@ Description:
 
 '''
 
+from .image_preprocessor import ImagePreprocessor
 from .tab_preprocessor import TabPreprocessor
 from .wide_preprocessor import WidePreprocessor
 
 __all__ = [
+    'ImagePreprocessor',
     'TabPreprocessor',
     'WidePreprocessor',
 ]
