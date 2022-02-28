@@ -40,7 +40,7 @@ class ImageEncoder(nn.Module):
 
 
 if __name__ == '__main__':
-    x = torch.ones(32, 3, 224, 224)
+    x = torch.ones(1, 3, 224, 224)
     model = ImageEncoder(is_require_grad=True)
     output = model(x)
     print(output.shape)
