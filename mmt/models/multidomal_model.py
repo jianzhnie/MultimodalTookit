@@ -101,7 +101,7 @@ class MultiModalBert(BertPreTrainedModel):
         outputs = torch.cat([text_output, image_output, tabular_output],
                             axis=1)
 
-        deephead_out = self._forward_head(deep_side=outputs)
+        deephead_out = self._forward_deephead(deep_side=outputs)
         return deephead_out
 
     def _forward_deeptabular(self,
@@ -123,22 +123,22 @@ class MultiModalBert(BertPreTrainedModel):
 
         return image_output
 
-    def _forward_head(self, deep_side):
+    def _forward_deephead(self, deep_side):
         deephead_out = self.head_encoder(deep_side)
         fc_layer = nn.Linear(deephead_out.size(1), self.pred_dim)
         output = fc_layer(deephead_out)
         return output
 
-    def _forward_text(self,
-                      input_ids=None,
-                      attention_mask=None,
-                      token_type_ids=None,
-                      position_ids=None,
-                      head_mask=None,
-                      inputs_embeds=None,
-                      class_weights=None,
-                      output_attentions=None,
-                      output_hidden_states=None):
+    def _forward_deeptext(self,
+                          input_ids=None,
+                          attention_mask=None,
+                          token_type_ids=None,
+                          position_ids=None,
+                          head_mask=None,
+                          inputs_embeds=None,
+                          class_weights=None,
+                          output_attentions=None,
+                          output_hidden_states=None):
 
         outputs = self.bert(
             input_ids,
